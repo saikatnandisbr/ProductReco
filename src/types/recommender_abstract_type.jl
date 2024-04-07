@@ -19,7 +19,7 @@ function fit(recommender::Recommender, data::Vector{CustomerProductRating})
 end
 
 """
-    function predict(recommender::Recommender, data::Vector{String}) 
+    function predict(recommender::Recommender, data::Vector{String})::Vector{CustomerProductRecommendation} 
 
 Returns a vector of customer product recommendations (::CustomerProductRecommendation).
 
