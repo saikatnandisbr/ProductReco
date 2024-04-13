@@ -5,7 +5,6 @@
 struct RecoScore
     reco_score::Int
 
-    # make sure that score is an integer between 0-100
     """
         function RecoScore(s::Int)
         
