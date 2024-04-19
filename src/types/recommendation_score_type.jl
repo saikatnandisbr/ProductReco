@@ -6,29 +6,29 @@ struct RecoScore
     reco_score::Int
 
     """
-        function RecoScore(s::Int)
+        function RecoScore(score::Int)
         
     Constuctor for RecoScore user defined type.
     Check passed integer against valid range. If valid then return constructed object.
 
-    s:  Ingeter score
+    score:  Ingeter score
     """
 
-    function RecoScore(s::Int)
-        @assert 0 <= s <= 100
-        return new(s)
+    function RecoScore(score::Int)
+        @assert 0 <= score <= 100
+        return new(score)
     end
 end
 
 """
-    function Base.convert(::Type{RecoScore}, x::Int)
+    function Base.convert(::Type{RecoScore}, score::Int)
 
 Sinhle-line funcition to automatically convert integer to RecoScore type.
 Overload function in Base module.
 Call constructor of RecoScore type with passed integer.
 
 first argument:     RecoScore (user defined type)
-x:                  Integer to be converted to RecoScore type
+score:              Integer to be converted to RecoScore type
 """
 
-Base.convert(::Type{RecoScore}, x::Int) = RecoScore(x)
+Base.convert(::Type{RecoScore}, score::Int) = RecoScore(score)
