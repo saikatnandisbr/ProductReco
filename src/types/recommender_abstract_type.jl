@@ -1,5 +1,5 @@
 # abstract Recommender type
-# represents a product recommendations generator
+# represents a generator of product recommendations
 abstract type Recommender end
 
 # contract
