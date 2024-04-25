@@ -1,14 +1,14 @@
 # abstract Recommender type
-# specifil families of algorithms will implement concrete types based on this abstract type
+# represents a product recommendations generator
 abstract type Recommender end
 
-# contract for the abstract Recommender type
+# contract
 """
     function fit(recommender::Recommender, agrs...; kwargs...) 
 
-Fits customer product rating data to create recommendation engine.
+Fits data to create model that generates product recommendations.
 
-recommnder:     A recommender type that implements a family of recommendation algorithms like Collaborative Filtering
+recommnder:     Recommender type object
 agrs:           Tuple of variable number of arguments
 kwargs:         Tuple of variable number of keyword arguments 
 """
@@ -22,9 +22,9 @@ end
 """
     function predict(recommender::Recommender, agrs...; kwargs...)::Vector{CustomerProductRecommendation} 
 
-Returns a vector of customer product recommendations (::CustomerProductRecommendation).
+Returns vector of customer product recommendations (::CustomerProductRecommendation).
 
-recommnder:     A Recommender type that implements a family of recommendation algorithms like Collaborative Filtering
+recommnder:     Recommender type object
 agrs:           Tuple of variable number of arguments
 kwargs:         Tuple of variable number of keyword arguments 
 """
@@ -34,4 +34,3 @@ function predict(recommender::Recommender, agrs...; kwargs...)::Vector{CustomerP
     error("predict method not defined in the concrete type")
 
 end
-
