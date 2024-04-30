@@ -3,6 +3,36 @@
 abstract type Recommender end
 
 # contract
+
+"""
+    function params(recommender::Recommender)::Dict
+
+Accessor function to get parameters used in contructor of the recommender. 
+Returns dictionary of constructor parameters.
+
+recommnder:     Recommender type object
+"""
+
+function params(recommender::Recommender)::Dict
+
+    error("params method not defined in the concrete type")
+
+end
+
+"""
+    function isfitted(recommender::Recommender)::Boolean
+
+Accessor function to inquire if the recommender has been fitted or not. 
+
+recommnder:     Recommender type object
+"""
+
+function isfitted(recommender::Recommender)::Boolean
+
+    error("isfitted method not defined in the concrete type")
+
+end
+
 """
     function fit(recommender::Recommender, agrs...; kwargs...) 
 
