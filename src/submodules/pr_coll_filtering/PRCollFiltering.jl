@@ -1,4 +1,4 @@
-module ProductRecoCollFiltering
+module PRCollFiltering
 
 # includes
 include("types.jl")

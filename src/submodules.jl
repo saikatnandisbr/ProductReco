@@ -1,4 +1,4 @@
 # submodules
 
 # includes
-include("submodules/coll_filtering/ProductRecoCollFiltering.jl")
+include("submodules/pr_coll_filtering/PRCollFiltering.jl")
