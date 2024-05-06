@@ -2,6 +2,8 @@
 # higher score treated as stronger recommendation
 # integet restricted to 0-100
 # this standard is useful when combining recommendations from multiple recommenders
+
+# code
 struct RecoScore
     reco_score::Int
 
