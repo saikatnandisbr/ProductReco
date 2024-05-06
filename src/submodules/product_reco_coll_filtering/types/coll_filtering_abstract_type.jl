@@ -1,6 +1,11 @@
 # abstract Collaborative Filtering type
 # subtype of Recommender
 # generates product recommendations using Collaborative Filtering
+
+# imports
+using ..ProductReco
+
+# code
 abstract type CollFiltering <: Recommender end
 
 # contract
