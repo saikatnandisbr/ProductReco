@@ -25,7 +25,7 @@ end
 """
     function Base.convert(::Type{RecoScore}, score::Int)
 
-Sinhle-line funcition to automatically convert integer to RecoScore type.
+Single-line funcition to automatically convert integer to RecoScore type.
 Overload function in Base module.
 Call constructor of RecoScore type with passed integer.
 
