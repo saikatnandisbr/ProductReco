@@ -11,7 +11,8 @@ export CollFilteringSVD
 struct CollFilteringSVD <: CollFiltering
 
     # to elaborate later
-    x
+    # dummy placeholder
+    x::Int
 
 end
 
