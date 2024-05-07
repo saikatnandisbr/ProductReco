@@ -34,7 +34,7 @@ agrs:           Tuple of variable number of arguments
 kwargs:         Tuple of variable number of keyword arguments 
 """
 
-function predict(recommender::Recommender, agrs...; kwargs...)::Vector{CustomerProductRecommendation}
+function predict(recommender::Recommender, agrs...; kwargs...)::Vector{CustomerProductReco}
 
     error("predict method not defined in the concrete type")
 
