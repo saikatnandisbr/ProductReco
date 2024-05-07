@@ -3,6 +3,7 @@
 # generates product recommendations using Collaborative Filtering
 
 # exports
+export CollFiltering
 export similar_customers
 
 # code
