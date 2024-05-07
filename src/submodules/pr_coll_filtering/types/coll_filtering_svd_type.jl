@@ -28,7 +28,7 @@ kwargs:         Tuple of variable number of keyword arguments
 
 function ProductReco.fit(recommender::CollFilteringSVD, agrs...; kwargs...) 
 
-    println("fit method defined in the concrete type")
+    return("fit method defined in the concrete type")
 
 end
 
