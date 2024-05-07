@@ -2,9 +2,6 @@
 # subtype of Recommender
 # generates product recommendations using Collaborative Filtering
 
-# imports
-using ..ProductReco
-
 # code
 abstract type CollFiltering <: Recommender end
 
@@ -21,6 +18,6 @@ kwargs:     Tuple of variable number of keyword arguments
 
 function similar_customers(cf::CollFiltering, agrs...; kwargs...)::Vector{Customer}
 
-    error("fit method not defined in the concrete type")
+    error("similar_customers method not defined in the concrete type")
 
 end
