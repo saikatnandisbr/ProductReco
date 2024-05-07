@@ -3,6 +3,9 @@
 # integet restricted to 0-100
 # this standard is useful when combining recommendations from multiple recommenders
 
+# exports
+export RecoScore
+
 # code
 struct RecoScore
     reco_score::Int
