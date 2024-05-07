@@ -4,6 +4,9 @@
 #   Similar customers are found based on the simplified representation
 #   Products purchased by most similar customers but not purchased by given customer are recommended
 
+# exports
+export CollFilteringSVD
+
 # code
 struct CollFilteringSVD <: CollFiltering
 
@@ -23,7 +26,7 @@ agrs:           Tuple of variable number of arguments
 kwargs:         Tuple of variable number of keyword arguments 
 """
 
-function fit(recommender::CollFilteringSVD, agrs...; kwargs...) 
+function ProductReco.fit(recommender::CollFilteringSVD, agrs...; kwargs...) 
 
     println("fit method defined in the concrete type")
 
@@ -39,7 +42,7 @@ agrs:           Tuple of variable number of arguments
 kwargs:         Tuple of variable number of keyword arguments 
 """
 
-function predict(recommender::CollFilteringSVD, agrs...; kwargs...)::Vector{CustomerProductReco}
+function ProductReco.predict(recommender::CollFilteringSVD, agrs...; kwargs...)::Vector{CustomerProductReco}
 
     return([("Customer", "Product", "CF SVD", 1)])
 
@@ -56,7 +59,7 @@ agrs:       Tuple of variable number of arguments
 kwargs:     Tuple of variable number of keyword arguments 
 """
 
-function similar_customers(cf::CollFilteringSVD, agrs...; kwargs...)::Vector{Customer}
+function PRCollFiltering.similar_customers(cf::CollFilteringSVD, agrs...; kwargs...)::Vector{Customer}
 
     return([(1)])
 

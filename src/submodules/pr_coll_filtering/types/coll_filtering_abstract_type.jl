@@ -2,6 +2,9 @@
 # subtype of Recommender
 # generates product recommendations using Collaborative Filtering
 
+# exports
+export similar_customers
+
 # code
 abstract type CollFiltering <: Recommender end
 
