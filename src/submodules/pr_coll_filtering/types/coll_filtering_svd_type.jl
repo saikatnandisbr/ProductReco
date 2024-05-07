@@ -1,16 +1,14 @@
 # Collaborative Filtering implementation using SVD (Singular Value Decomposition)
 #   Customer prdocut rating matrix is decomposed using SVD
 #   Largest eigenvalues and corresponding eigenvectors are taken to simplify customer-product relationship
-#   Similar customers are found based on the simplified representation
-#   Products purchased by most similar customers but not purchased by given customer are recommended
+#   Similar customers are found based on comparison of the simplified representation
+#   Products purchased by similar customers but not purchased by given customer are recommended
 
 # exports
-export CollFilteringSVD
 
 # code
 struct CollFilteringSVD <: CollFiltering
 
-    # to elaborate later
     # dummy placeholder
     x::Int
 
@@ -34,7 +32,7 @@ function ProductReco.fit(recommender::CollFilteringSVD, agrs...; kwargs...)
 end
 
 """
-    function predict(recommender::CollFilteringSVD, agrs...; kwargs...)::Vector{CustomerProductRecommendation} 
+    function predict(recommender::CollFilteringSVD, agrs...; kwargs...)::Vector{CustomerProductReco} 
 
 Returns vector of customer product recommendations (::CustomerProductRecommendation).
 
