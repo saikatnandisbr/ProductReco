@@ -4,4 +4,4 @@
 export CustomerProductRating
 
 # code
-const CustomerProductRating = Tuple{String, String, Real}
+const CustomerProductRating = Tuple{Customer, Product, Rating}
