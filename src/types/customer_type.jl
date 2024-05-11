@@ -15,7 +15,6 @@ end
 
 Single-line funcition to automatically convert permissible types to Customer.
 Overload function in Base module.
-Call constructor of Customer type with passed value.
 
 first argument:     Customer (user defined type)
 customer_id:        ID to be converted to Customer type
