@@ -1,7 +1,7 @@
-# tuple of customer, product, recommender name, relative score
+# tuple of customer, product, relative score
 
 # exports
 export CustomerProductReco
 
 # code
-const CustomerProductReco = Tuple{String, String, String, RecoScore}
+const CustomerProductReco = Tuple{Customer, Product, RecoScore}
