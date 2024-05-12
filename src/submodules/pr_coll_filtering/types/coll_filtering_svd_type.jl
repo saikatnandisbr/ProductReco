@@ -9,8 +9,8 @@
 # code
 struct CollFilteringSVD <: CollFiltering
 
-    # dummy placeholder
-    x::Int
+    # placeholder
+    x::Int64
 
 end
 
@@ -43,7 +43,7 @@ kwargs:         Tuple of variable number of keyword arguments
 
 function ProductReco.predict(recommender::CollFilteringSVD, agrs...; kwargs...)::Vector{CustomerProductReco}
 
-    return([("Customer", "Product", "CF SVD", 1)])
+    return([("A Customer", "A Product", 1)])
 
 end
 
@@ -60,6 +60,6 @@ kwargs:     Tuple of variable number of keyword arguments
 
 function PRCollFiltering.similar_customers(cf::CollFilteringSVD, agrs...; kwargs...)::Vector{Customer}
 
-    return([(1)])
+    return([("Another Customer")])
 
 end
