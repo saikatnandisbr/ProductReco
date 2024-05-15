@@ -2,6 +2,7 @@
 
 # exports
 export Customer
+export id
 
 # code
 struct Customer{T <: Union{String, Int}}
@@ -9,6 +10,7 @@ struct Customer{T <: Union{String, Int}}
     customer_id::T
 
 end
+
 
 """
     function Base.convert(::Type{Customer}, customer_id::T) where {T <: Union{String, Int}}
@@ -21,3 +23,16 @@ customer_id:        ID to be converted to Customer type
 """
 
 Base.convert(::Type{Customer}, customer_id::T) where {T <: Union{String, Int}} = Customer(customer_id)
+
+"""
+    function id(obj::Customer)
+
+Accessor function to get id.
+
+obj:                Customer object
+"""
+
+function id(obj::Customer)
+    return obj.customer_id
+end
+
