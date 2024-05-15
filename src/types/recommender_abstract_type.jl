@@ -18,7 +18,7 @@ agrs:           Tuple of variable number of arguments
 kwargs:         Tuple of variable number of keyword arguments 
 """
 
-function fit(recommender::Recommender, agrs...; kwargs...) 
+function fit!(recommender::Recommender, agrs...; kwargs...) 
 
     error("fit method not defined in the concrete type")
 
