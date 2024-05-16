@@ -212,10 +212,18 @@ function ProductReco.fit_transform!(recommender::CollFilteringSVD, data::Vector{
 
     try
 
-        recommender = ProductReco.fit!(recommender, data)
-        recommender = ProductReco.transform!(recommender)
+        # set status
+        recommender.fitted = false
+        recommender.transformed = false
+
+        recommender = (ProductReco.transform! ∘ ProductReco.fit!)(recommender, data)
+
+        # set status
+        recommender.fitted = true
+        recommender.transformed = true
 
         return recommender
+
     catch err
         println("ProductReco.transform! error: $err")
         throw(error())
