@@ -5,7 +5,6 @@
 #   Products purchased by similar customers but not purchased by given customer are recommended
 
 # imports
-import Base.@kwdef
 using SparseArrays
 using Random
 using TSVD
@@ -13,42 +12,97 @@ using TSVD
 # exports
 
 # code
-@kwdef mutable struct CollFilteringSVD <: CollFiltering
+mutable struct CollFilteringSVD <: CollFiltering
 
     # parameters to control logic
-    n_max_singular_vals::Int64 = 1000       # max number of singular values to construct approximate ratings matrix
-    n_max_similar_custs::Int64 = 50         # max number of similar customers to consider when generating recommendations
+    n_max_singular_vals::Int64       # max number of singular values to construct approximate ratings matrix
+    n_max_similar_custs::Int64         # max number of similar customers to consider when generating recommendations
+
+    # status indicators
+    fitted::Bool
+    transformed::Bool
 
     # id to index map
-    cust_idx_map = Dict()
-    prod_idx_map = Dict()
+    cust_idx_map::Dict
+    prod_idx_map::Dict
 
     # ratings data in sparse matrix
-    cust_prod_ratings = spzeros(1,1)     # initialize
+    cust_prod_ratings::SparseMatrixCSC
 
     # svd output
-    U = zeros(1, 1)                      # initialize
-    s = zeros(1)                         # initialize
-    V = zeros(1, 1)                      # initialize
+    U::Matrix{Float64}            
+    s::Vector{Float64} 
+    V::Matrix{Float64}
+
+    """
+        function CollFilteringSVD(; n_max_singular_vals::Int64=1000, n_max_similar_custs::Int64=20)
+
+    Constructor with required keyword arguments with default values.
+
+    n_max_singular_vals:    Max number of singular values to keep in SVD
+    n_max_similar_custs:    Max number of most similar customers to keep
+    """
+
+    function CollFilteringSVD(; n_max_singular_vals::Int64=1000, n_max_similar_custs::Int64=20)
+        self = new()
+        self.n_max_singular_vals = n_max_singular_vals
+        self.n_max_similar_custs = n_max_similar_custs
+
+        # set status
+        self.fitted = false
+        self.transformed = false
+
+        return self
+    end
 end
 
 # implement contract of Recommender abstract type
 """
-    function fit(recommender::CollFilteringSVD, agrs...; kwargs...) 
+    function roductReco.isfitted(recommender::CollFilteringSVD)::Bool
+
+Accessor function to get fitted status.
+
+recommender:    Recommender type opbject
+"""
+
+function ProductReco.isfitted(recommender::CollFilteringSVD)::Bool
+
+    return recommender.fitted
+
+end
+
+"""
+    function ProductReco.istransformed(recommender::CollFilteringSVD)::Bool
+
+Accessor function to get transformed status.
+
+recommender:    Recommender type opbject
+"""
+
+function ProductReco.istransformed(recommender::CollFilteringSVD)::Bool
+
+    return recommender.transformed
+
+end
+
+"""
+    function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerProductRating})::CollFilteringSVD
 
 Fits data to create model that generates product recommendations.
 
 recommnder:     CollFilteringSVD type object
-agrs:           Tuple of variable number of arguments
-kwargs:         Tuple of variable number of keyword arguments 
+data:           Vector of customer product rating type (CustomerProductRating)
 """
 
-function ProductReco.fit!(recommender::CollFilteringSVD; data::Vector{CustomerProductRating}) 
+function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerProductRating})::CollFilteringSVD
 
     seed = 123
     Random.seed!(seed)
 
     try
+        # set status
+        recommender.fitted = false
+
         # id to index map
         all_customers = id.(getfield.(data, 1))
         unique_customers = unique(all_customers)
@@ -72,13 +126,102 @@ function ProductReco.fit!(recommender::CollFilteringSVD; data::Vector{CustomerPr
         U, s, V = tsvd(recommender.cust_prod_ratings, n_singular_vals)        
         recommender.U, recommender.s, recommender.V = U, s, V
 
+        # set status
+        recommender.fitted = true
+
+        return recommender
+
     catch err
         println("ProductReco.fit! error: $err")
         throw(error())
     end
 
-    return nothing
 end
+
+"""
+    function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
+
+Transforms data used to fit model with fitted model.
+
+recommnder:     CollFilteringSVD type object
+"""
+
+function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
+
+    try
+        # set status
+        recommender.transformed = false
+
+        # transform logic
+        println("ran transform! on fit data")
+
+        # set status
+        recommender.transformed = true
+
+        return recommender
+
+    catch err
+        println("ProductReco.transform! error: $err")
+        throw(error())
+    end
+end
+
+"""
+    function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{CustomerProductRating})::CollFilteringSVD
+
+Transforms new data with fitted model.
+
+recommnder:     CollFilteringSVD type object
+data:           Vector of customer product rating type (CustomerProductRating)
+
+"""
+
+function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{CustomerProductRating})::CollFilteringSVD
+
+    seed = 123
+    Random.seed!(seed)
+
+    try
+        # set status
+        recommender.transformed = false
+
+        # transform logic
+        println("ran transform! on new data")
+
+        # set status
+        recommender.transformed = true
+
+        return recommender
+
+    catch err
+        println("ProductReco.transform! error: $err")
+        throw(error())
+    end
+end
+
+"""
+    function ProductReco.fit_transform!(recommender::CollFilteringSVD, data::Vector{CustomerProductRating})::CollFilteringSVD
+
+Fit model with data and transform the same data with fitted model.
+
+recommnder:     CollFilteringSVD type object
+data:           Vector of customer product rating type (CustomerProductRating)
+"""
+
+function ProductReco.fit_transform!(recommender::CollFilteringSVD, data::Vector{CustomerProductRating})::CollFilteringSVD
+
+    try
+
+        recommender = ProductReco.fit!(recommender, data)
+        recommender = ProductReco.transform!(recommender)
+
+        return recommender
+    catch err
+        println("ProductReco.transform! error: $err")
+        throw(error())
+    end
+end
+
 
 """
     function predict(recommender::CollFilteringSVD, agrs...; kwargs...)::Vector{CustomerProductReco} 
