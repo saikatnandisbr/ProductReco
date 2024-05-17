@@ -99,22 +99,22 @@ function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerPr
         recommender.fitted = false
 
         # get fields from data
-        cust_ids = id.(getfield.(data, 1))
-        prod_ids = id.(getfield.(data, 2))
-        rating_vals = val.(getfield.(data, 3))
+        cust_vec = id.(getfield.(data, 1))
+        prod_vec = id.(getfield.(data, 2))
+        rating_vec = val.(getfield.(data, 3))
 
         # id to index map
-        cust_idx_map = id_to_index_map(cust_ids)
+        cust_idx_map = id_to_index_map(cust_vec)
         recommender.cust_idx_map = cust_idx_map
 
-        prod_idx_map = id_to_index_map(prod_ids)
+        prod_idx_map = id_to_index_map(prod_vec)
         recommender.prod_idx_map = prod_idx_map
 
         # sparse ratings matrix
-        idx_customers = [cust_idx_map[id] for id in cust_ids]
-        idx_products = [prod_idx_map[id] for id in prod_ids]
+        idx_customers = [cust_idx_map[id] for id in cust_vec]
+        idx_products = [prod_idx_map[id] for id in prod_vec]
 
-        cust_prod_ratings = sparse(idx_customers, idx_products, rating_vals)
+        cust_prod_ratings = sparse(idx_customers, idx_products, rating_vec)
         recommender.cust_prod_ratings = cust_prod_ratings
 
         # truncated SVD   
@@ -182,32 +182,34 @@ function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{Cust
         recommender.transformed = false
 
         # get fields from data
-        cust_ids = id.(getfield.(data, 1))
-        prod_ids = id.(getfield.(data, 2))
-        rating_vals = val.(getfield.(data, 3))
+        cust_vec = id.(getfield.(data, 1))
+        prod_vec = id.(getfield.(data, 2))
+        rating_vec = val.(getfield.(data, 3))
 
         # only keep ratings for products that appear in fitted data
-        fit_prod_ids = keys(recommender.prod_idx_map)
-        transform_prod_ids = unique(prod_ids)
-        new_prod_ids = transform_prod_ids[[!in(prod_id, fit_prod_ids) for prod_id in transform_prod_ids]]
-        keep = [!in(prod_id, new_prod_ids) for prod_id in prod_ids]
+        fit_prod_ids = keys(recommender.prod_idx_map)                                                       # product ids in fit data
+        transform_prod_ids = unique(prod_vec)                                                               # product ids in transform data
 
-        cust_ids = cust_ids[keep]
-        prod_ids = prod_ids[keep]
-        rating_vals = rating_vals[keep]
+        new_prod_ids = transform_prod_ids[[!in(prod_id, fit_prod_ids) for prod_id in transform_prod_ids]]   # product ids in transform but not in fit data
+
+        keep = [!in(prod_id, new_prod_ids) for prod_id in prod_vec]                                         # index is false for recrods with new products
+
+        cust_vec = cust_vec[keep]            # keep entries for fit products only
+        prod_vec = prod_vec[keep]            # keep entries for fit products only
+        rating_vec = rating_vec[keep]        # keep entries for fit products only
 
         # id to index map for customers
-        cust_idx_map = id_to_index_map(cust_ids)
+        cust_idx_map = id_to_index_map(cust_vec)
         recommender.cust_idx_map = cust_idx_map
 
         # id to index map for products is same as fit
         prod_idx_map = recommender.prod_idx_map
 
         # sparse ratings matrix
-        idx_customers = [cust_idx_map[id] for id in cust_ids]
-        idx_products = [prod_idx_map[id] for id in prod_ids]
+        idx_customers = [cust_idx_map[id] for id in cust_vec]
+        idx_products = [prod_idx_map[id] for id in prod_vec]
 
-        cust_prod_ratings = sparse(idx_customers, idx_products, rating_vals)
+        cust_prod_ratings = sparse(idx_customers, idx_products, rating_vec)
         recommender.cust_prod_ratings = cust_prod_ratings
 
         # call routine to find similar customers
