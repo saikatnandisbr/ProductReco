@@ -4,6 +4,7 @@ module PRCollFiltering
 using ..ProductReco
 
 # includes
+include("utils.jl")
 include("types.jl")
 
 # code
