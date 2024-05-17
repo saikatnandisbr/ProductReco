@@ -5,8 +5,8 @@
 #   Products purchased by similar customers but not purchased by given customer are recommended
 
 # imports
-using SparseArrays
-using Random
+using SparseArrays      # in standard library
+using Random            # in standard library
 using TSVD
 
 # exports
@@ -25,12 +25,16 @@ mutable struct CollFilteringSVD <: CollFiltering
     # customer, product, ratings data
     cust_idx_map::Dict                      # unique customer ids to index of appearance in data
     prod_idx_map::Dict                      # unique product ids to index of appearance in data
-    cust_prod_ratings::SparseMatrixCSC      # sparse customer product ratings matrix
+    cust_prod_rating::SparseMatrixCSC      # sparse customer product ratings matrix
 
-    # svd output
+    # svd output from fit
     U::Matrix{Float64}            
     s::Vector{Float64} 
     V::Matrix{Float64}
+
+    # similar customers from transform
+    similar_cust_pair::Matrix{Int64}
+    similarity::Vector{Float64}
 
     """
         function CollFilteringSVD(; n_max_singular_vals::Int64=1000, n_max_similar_custs::Int64=20)
@@ -111,11 +115,11 @@ function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerPr
         recommender.prod_idx_map = prod_idx_map
 
         # sparse ratings matrix
-        idx_customers = [cust_idx_map[id] for id in cust_vec]
-        idx_products = [prod_idx_map[id] for id in prod_vec]
+        idx_customer = [cust_idx_map[id] for id in cust_vec]
+        idx_product = [prod_idx_map[id] for id in prod_vec]
 
-        cust_prod_ratings = sparse(idx_customers, idx_products, rating_vec)
-        recommender.cust_prod_ratings = cust_prod_ratings
+        cust_prod_rating = sparse(idx_customer, idx_product, rating_vec)
+        recommender.cust_prod_rating = cust_prod_rating
 
         # truncated SVD   
         n_singular_vals = min(length(cust_idx_map), length(prod_idx_map), recommender.n_max_singular_vals)
@@ -123,7 +127,7 @@ function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerPr
         seed = 123
         Random.seed!(seed)
 
-        U, s, V = tsvd(recommender.cust_prod_ratings, n_singular_vals)        
+        U, s, V = tsvd(recommender.cust_prod_rating, n_singular_vals)        
         recommender.U, recommender.s, recommender.V = U, s, V
 
         # set status
@@ -132,7 +136,7 @@ function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerPr
         return recommender
 
     catch err
-        println("ProductReco.fit! error: $err")
+        println("ProductReco.fit!: $err")
         throw(error())
     end
 
@@ -153,6 +157,9 @@ function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
         recommender.transformed = false
 
         # call routine to find similar customers
+        similar_cust_pair, similarity = top_similar_customers(cosine_vec, recommender.n_max_similar_custs, recommender.cust_prod_rating)
+        recommender.similar_cust_pair = similar_cust_pair
+        recommender.similarity = similarity
 
         # set status
         recommender.transformed = true
@@ -160,7 +167,7 @@ function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
         return recommender
 
     catch err
-        println("ProductReco.transform! error: $err")
+        println("ProductReco.transform!: $err")
         throw(error())
     end
 end
@@ -206,13 +213,16 @@ function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{Cust
         prod_idx_map = recommender.prod_idx_map
 
         # sparse ratings matrix
-        idx_customers = [cust_idx_map[id] for id in cust_vec]
-        idx_products = [prod_idx_map[id] for id in prod_vec]
+        idx_customer = [cust_idx_map[id] for id in cust_vec]
+        idx_product = [prod_idx_map[id] for id in prod_vec]
 
-        cust_prod_ratings = sparse(idx_customers, idx_products, rating_vec)
-        recommender.cust_prod_ratings = cust_prod_ratings
+        cust_prod_rating = sparse(idx_customer, idx_product, rating_vec)
+        recommender.cust_prod_rating = cust_prod_rating
 
         # call routine to find similar customers
+        similar_cust_pair, similarity = top_similar_customers(cosine_vec, recommender.n_max_similar_custs, recommender.cust_prod_rating)
+        recommender.similar_cust_pair = similar_cust_pair
+        recommender.similarity = similarity
 
         # set status
         recommender.transformed = true
@@ -220,7 +230,7 @@ function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{Cust
         return recommender
 
     catch err
-        println("ProductReco.transform! error: $err")
+        println("ProductReco.transform!: $err")
         throw(error())
     end
 end
@@ -251,7 +261,7 @@ function ProductReco.fit_transform!(recommender::CollFilteringSVD, data::Vector{
         return recommender
 
     catch err
-        println("ProductReco.transform! error: $err")
+        println("ProductReco.fit_transform!: $err")
         throw(error())
     end
 end
