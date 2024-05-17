@@ -30,6 +30,9 @@ function top_similar_customers(fn::Function, top_n::Int64, cust_prod_rating::Spa
 
         for compared_cust_idx in 1:size(cust_prod_rating, 1)
 
+            # skip calculation of similarity with self
+            cust_idx == compared_cust_idx && continue
+
             # similarity measure using function passed
             # materialize necessary customer vector pair from sparse array
             sim_score = fn(Vector(cust_prod_rating[cust_idx, :]), Vector(cust_prod_rating[compared_cust_idx, :]))
