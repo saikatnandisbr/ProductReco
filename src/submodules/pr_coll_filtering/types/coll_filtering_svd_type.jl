@@ -22,14 +22,10 @@ mutable struct CollFilteringSVD <: CollFiltering
     fitted::Bool
     transformed::Bool
 
-    # fit data
-    cust_idx_map_fit::Dict                      # unique customer ids to index of appearance in data
-    prod_idx_map_fit::Dict                      # unique product ids to index of appearance in data
-    cust_prod_ratings_fit::SparseMatrixCSC      # sparse customer product ratings matrix
-
-    # transform data, uses product idx map created during fit
-    cust_idx_map_transform::Dict                      # unique customer ids to index of appearance in data
-    cust_prod_ratings_transform::SparseMatrixCSC      # sparse customer product ratings matrix
+    # customer, product, ratings data
+    cust_idx_map::Dict                      # unique customer ids to index of appearance in data
+    prod_idx_map::Dict                      # unique product ids to index of appearance in data
+    cust_prod_ratings::SparseMatrixCSC      # sparse customer product ratings matrix
 
     # svd output
     U::Matrix{Float64}            
@@ -109,17 +105,17 @@ function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerPr
 
         # id to index map
         cust_idx_map = id_to_index_map(cust_ids)
-        recommender.cust_idx_map_fit = cust_idx_map
+        recommender.cust_idx_map = cust_idx_map
 
         prod_idx_map = id_to_index_map(prod_ids)
-        recommender.prod_idx_map_fit = prod_idx_map
+        recommender.prod_idx_map = prod_idx_map
 
         # sparse ratings matrix
         idx_customers = [cust_idx_map[id] for id in cust_ids]
         idx_products = [prod_idx_map[id] for id in prod_ids]
 
         cust_prod_ratings = sparse(idx_customers, idx_products, rating_vals)
-        recommender.cust_prod_ratings_fit = cust_prod_ratings
+        recommender.cust_prod_ratings = cust_prod_ratings
 
         # truncated SVD   
         n_singular_vals = min(length(cust_idx_map), length(prod_idx_map), recommender.n_max_singular_vals)
@@ -127,7 +123,7 @@ function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerPr
         seed = 123
         Random.seed!(seed)
 
-        U, s, V = tsvd(recommender.cust_prod_ratings_fit, n_singular_vals)        
+        U, s, V = tsvd(recommender.cust_prod_ratings, n_singular_vals)        
         recommender.U, recommender.s, recommender.V = U, s, V
 
         # set status
@@ -155,10 +151,6 @@ function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
     try
         # set status
         recommender.transformed = false
-
-        # copy fit data to transformed
-        recommender.cust_idx_map_transform = recommender.cust_idx_map_fit
-        recommender.cust_prod_ratings_transform = recommender.cust_prod_ratings_fit
 
         # call routine to find similar customers
 
@@ -195,24 +187,28 @@ function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{Cust
         rating_vals = val.(getfield.(data, 3))
 
         # only keep ratings for products that appear in fitted data
-        keep = [(prod_id in keys(recommender.prod_idx_map_fit) ? true : false) for prod_id in prod_ids]
+        fit_prod_ids = keys(recommender.prod_idx_map)
+        transform_prod_ids = unique(prod_ids)
+        new_prod_ids = transform_prod_ids[[!in(prod_id, fit_prod_ids) for prod_id in transform_prod_ids]]
+        keep = [!in(prod_id, new_prod_ids) for prod_id in prod_ids]
+
         cust_ids = cust_ids[keep]
         prod_ids = prod_ids[keep]
         rating_vals = rating_vals[keep]
 
         # id to index map for customers
         cust_idx_map = id_to_index_map(cust_ids)
-        recommender.cust_idx_map_transform = cust_idx_map
+        recommender.cust_idx_map = cust_idx_map
 
         # id to index map for products is same as fit
-        prod_idx_map = recommender.prod_idx_map_fit
+        prod_idx_map = recommender.prod_idx_map
 
         # sparse ratings matrix
         idx_customers = [cust_idx_map[id] for id in cust_ids]
         idx_products = [prod_idx_map[id] for id in prod_ids]
 
         cust_prod_ratings = sparse(idx_customers, idx_products, rating_vals)
-        recommender.cust_prod_ratings_transform = cust_prod_ratings
+        recommender.cust_prod_ratings = cust_prod_ratings
 
         # call routine to find similar customers
 
