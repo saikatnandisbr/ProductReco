@@ -27,9 +27,8 @@ mutable struct CollFilteringSVD <: CollFiltering
     prod_idx_map_fit::Dict                      # unique product ids to index of appearance in data
     cust_prod_ratings_fit::SparseMatrixCSC      # sparse customer product ratings matrix
 
-    # transform data
+    # transform data, uses product idx map created during fit
     cust_idx_map_transform::Dict                      # unique customer ids to index of appearance in data
-    prod_idx_map_transform::Dict                      # unique product ids to index of appearance in data
     cust_prod_ratings_transform::SparseMatrixCSC      # sparse customer product ratings matrix
 
     # svd output
@@ -103,20 +102,23 @@ function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerPr
         # set status
         recommender.fitted = false
 
+        # get fields from data
+        cust_ids = id.(getfield.(data, 1))
+        prod_ids = id.(getfield.(data, 2))
+        rating_vals = val.(getfield.(data, 3))
+
         # id to index map
-        all_customers = id.(getfield.(data, 1))
-        cust_idx_map = id_to_index_map(all_customers)
+        cust_idx_map = id_to_index_map(cust_ids)
         recommender.cust_idx_map_fit = cust_idx_map
 
-        all_products = id.(getfield.(data, 2))
-        prod_idx_map = id_to_index_map(all_products)
+        prod_idx_map = id_to_index_map(prod_ids)
         recommender.prod_idx_map_fit = prod_idx_map
 
         # sparse ratings matrix
-        idx_customers = [cust_idx_map[id] for id in all_customers]
-        idx_products = [prod_idx_map[id] for id in all_products]
+        idx_customers = [cust_idx_map[id] for id in cust_ids]
+        idx_products = [prod_idx_map[id] for id in prod_ids]
 
-        cust_prod_ratings = sparse(idx_customers, idx_products, val.(getfield.(data, 3)))
+        cust_prod_ratings = sparse(idx_customers, idx_products, rating_vals)
         recommender.cust_prod_ratings_fit = cust_prod_ratings
 
         # truncated SVD   
@@ -156,7 +158,6 @@ function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
 
         # copy fit data to transformed
         recommender.cust_idx_map_transform = recommender.cust_idx_map_fit
-        recommender.prod_idx_map_transform = recommender.prod_idx_map_fit
         recommender.cust_prod_ratings_transform = recommender.cust_prod_ratings_fit
 
         # call routine to find similar customers
@@ -188,20 +189,29 @@ function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{Cust
         # set status
         recommender.transformed = false
 
-        # id to index map
-        all_customers = id.(getfield.(data, 1))
-        cust_idx_map = id_to_index_map(all_customers)
+        # get fields from data
+        cust_ids = id.(getfield.(data, 1))
+        prod_ids = id.(getfield.(data, 2))
+        rating_vals = val.(getfield.(data, 3))
+
+        # only keep ratings for products that appear in fitted data
+        keep = [(prod_id in keys(recommender.prod_idx_map_fit) ? true : false) for prod_id in prod_ids]
+        cust_ids = cust_ids[keep]
+        prod_ids = prod_ids[keep]
+        rating_vals = rating_vals[keep]
+
+        # id to index map for customers
+        cust_idx_map = id_to_index_map(cust_ids)
         recommender.cust_idx_map_transform = cust_idx_map
 
-        all_products = id.(getfield.(data, 2))
-        prod_idx_map = id_to_index_map(all_products)
-        recommender.prod_idx_map_transform = prod_idx_map
+        # id to index map for products is same as fit
+        prod_idx_map = recommender.prod_idx_map_fit
 
         # sparse ratings matrix
-        idx_customers = [cust_idx_map[id] for id in all_customers]
-        idx_products = [prod_idx_map[id] for id in all_products]
+        idx_customers = [cust_idx_map[id] for id in cust_ids]
+        idx_products = [prod_idx_map[id] for id in prod_ids]
 
-        cust_prod_ratings = sparse(idx_customers, idx_products, val.(getfield.(data, 3)))
+        cust_prod_ratings = sparse(idx_customers, idx_products, rating_vals)
         recommender.cust_prod_ratings_transform = cust_prod_ratings
 
         # call routine to find similar customers
