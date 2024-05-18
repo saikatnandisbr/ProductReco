@@ -13,7 +13,7 @@ end
 
 
 """
-    function Base.convert(::Type{Customer}, customer_id::T) where {T <: Union{String, Int}}
+    function Base.convert(::Type{Customer}, customer_id::T) where {T <: Union{AbstractString, Int}}
 
 Single-line funcition to automatically convert permissible types to Customer.
 Overload function in Base module.
@@ -22,7 +22,7 @@ first argument:     Customer (user defined type)
 customer_id:        ID to be converted to Customer type
 """
 
-Base.convert(::Type{Customer}, customer_id::T) where {T <: Union{String, Int}} = Customer(customer_id)
+Base.convert(::Type{Customer}, customer_id::T) where {T <: Union{AbstractString, Int}} = Customer(customer_id)
 
 """
     function id(obj::Customer)
@@ -35,4 +35,3 @@ obj:                Customer object
 function id(obj::Customer)
     return obj.customer_id
 end
-

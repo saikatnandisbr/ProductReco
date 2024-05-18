@@ -4,7 +4,7 @@
 using SparseArrays      # in standard library
 
 """
-    function top_similar_customers(fn::Function, top_n::Int64, cust_prod_ratings::SparseMatrixCSC)::(Matrix{Int64}, Vector{Float64})
+    function top_similar_customers(fn::Function, top_n::Int64, cust_prod_rating::T) where {T <: Union{Matrix{Float64}, SparseMatrixCSC}}
 
 Returns top_n similar customers for each customer and measure of similarity between the pairs.
 
@@ -13,7 +13,7 @@ top_n:                  Number of most similar customers to find
 cust_prod_ratings:      Sparse ratings matrix with columns in rows and products in columns
 """
 
-function top_similar_customers(fn::Function, top_n::Int64, cust_prod_rating::SparseMatrixCSC)
+function top_similar_customers(fn::Function, top_n::Int64, cust_prod_rating::T) where {T <: Union{Matrix{Float64}, SparseMatrixCSC}}
 
     # vectors to store final output
     cust = Vector{Int64}()
@@ -35,7 +35,7 @@ function top_similar_customers(fn::Function, top_n::Int64, cust_prod_rating::Spa
 
             # similarity measure using function passed
             # materialize necessary customer vector pair from sparse array
-            sim_score = fn(Vector(cust_prod_rating[cust_idx, :]), Vector(cust_prod_rating[compared_cust_idx, :]))
+            sim_score = fn(cust_prod_rating[cust_idx, :], cust_prod_rating[compared_cust_idx, :])
 
             # if this pair more similar than least similar pair in top n list then replace the least similar so far with new pair
             if sim_score > minimum(top_n_similarity)

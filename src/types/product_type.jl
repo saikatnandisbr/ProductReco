@@ -12,7 +12,7 @@ struct Product{T <: Union{String, Int}}
 end
 
 """
-    function Base.convert(::Type{Product}, product_id::T) where {T <: Union{String, Int}}
+    function Base.convert(::Type{Product}, product_id::T) where {T <: Union{AbstractString, Int}}
 
 Single-line funcition to automatically convert permissible types to Product.
 Overload function in Base module.
@@ -21,7 +21,7 @@ first argument:    Product (user defined type)
 product_id:        ID to be converted to Product type
 """
 
-Base.convert(::Type{Product}, product_id::T) where {T <: Union{String, Int}} = Product(product_id)
+Base.convert(::Type{Product}, product_id::T) where {T <: Union{AbstractString, Int}} = Product(product_id)
 
 """
     function id(obj::Product)
