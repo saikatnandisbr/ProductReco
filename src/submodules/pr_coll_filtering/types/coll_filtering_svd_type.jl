@@ -18,6 +18,9 @@ mutable struct CollFilteringSVD <: CollFiltering
     n_max_singular_vals::Int64       # max number of singular values to construct approximate ratings matrix
     n_max_similar_custs::Int64         # max number of similar customers to consider when generating recommendations
 
+    # use SVD or not
+    SVD_flag::Bool
+
     # status indicators
     fitted::Bool
     transformed::Bool
@@ -37,7 +40,7 @@ mutable struct CollFilteringSVD <: CollFiltering
     similarity::Vector{Float64}
 
     """
-        function CollFilteringSVD(; n_max_singular_vals::Int64=1000, n_max_similar_custs::Int64=20)
+        function CollFilteringSVD(; n_max_singular_vals::Int64=1000, n_max_similar_custs::Int64=20, SVD_flag::Bool=true)
 
     Constructor with required keyword arguments with default values.
 
@@ -45,10 +48,11 @@ mutable struct CollFilteringSVD <: CollFiltering
     n_max_similar_custs:    Max number of most similar customers to keep
     """
 
-    function CollFilteringSVD(; n_max_singular_vals::Int64=1000, n_max_similar_custs::Int64=20)
+    function CollFilteringSVD(; n_max_singular_vals::Int64=100, n_max_similar_custs::Int64=10, SVD_flag::Bool=true)
         self = new()
         self.n_max_singular_vals = n_max_singular_vals
         self.n_max_similar_custs = n_max_similar_custs
+        self.SVD_flag = SVD_flag
 
         # set status
         self.fitted = false
@@ -157,7 +161,14 @@ function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
         recommender.transformed = false
 
         # call routine to find similar customers
-        similar_cust_pair, similarity = top_similar_customers(cosine_vec, recommender.n_max_similar_custs, recommender.cust_prod_rating)
+        if recommender.SVD_flag
+            cust_prod_rating = recommender.cust_prod_rating * recommender.V     # reduce using SVD
+        else
+            cust_prod_rating = recommender.cust_prod_rating
+        end
+
+        similar_cust_pair, similarity = top_similar_customers(cosine_vec, recommender.n_max_similar_custs, cust_prod_rating)
+
         recommender.similar_cust_pair = similar_cust_pair
         recommender.similarity = similarity
 
@@ -220,7 +231,9 @@ function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{Cust
         recommender.cust_prod_rating = cust_prod_rating
 
         # call routine to find similar customers
-        similar_cust_pair, similarity = top_similar_customers(cosine_vec, recommender.n_max_similar_custs, recommender.cust_prod_rating)
+        cust_prod_rating = recommender.cust_prod_rating * recommender.V     # reduce using SVD
+        similar_cust_pair, similarity = top_similar_customers(cosine_vec, recommender.n_max_similar_custs, cust_prod_rating)
+
         recommender.similar_cust_pair = similar_cust_pair
         recommender.similarity = similarity
 
