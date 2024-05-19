@@ -42,11 +42,16 @@ function top_similar_customers_threaded(fn::Function, top_n::Int64, cust_prod_ra
             # spawn thread
             Threads.@spawn begin
 
+                # allocate once outside loop
+                top_n_similar = fill(0, top_n)             # used to store indices of top similar customers
+                top_n_similarity = fill(-Inf, top_n)       # used to store similarity of top similar customers
+
                 # each thread handles its own slice of data
                 for this_cust_idx in thread_idx[thread_number]
                     
-                    top_n_similar = fill(0, top_n)             # used to store indices of top similar customers
-                    top_n_similarity = fill(-Inf, top_n)       # used to store similarity of top similar customers
+                    # initialize for each loop
+                    top_n_similar .= 0
+                    top_n_similarity .= -Inf
 
                     for compared_cust_idx in 1:size(cust_prod_rating, 1)
 
