@@ -2,6 +2,7 @@
 
 # includes
 include("types/customer_type.jl")                           # customer
+include("types/similar_customer_type.jl")                   # customer with similarity score
 include("types/product_type.jl")                            # product
 include("types/rating_type.jl")                             # rating
 include("types/customer_product_rating_type.jl")            # customer product rating
