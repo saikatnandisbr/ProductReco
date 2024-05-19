@@ -226,7 +226,6 @@ function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{Cust
 
         # call routine to find similar customers
         cust_prod_rating = cust_prod_rating * recommender.V     # reduce using SVD
-
         cust_idx, similar_cust_idx, similarity = top_similar_customers_threaded(cosine_vec, recommender.n_max_similar_custs, cust_prod_rating)
 
         # save similar customers
