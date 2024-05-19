@@ -33,7 +33,8 @@ mutable struct CollFilteringSVD <: CollFiltering
     V::Matrix{Float64}
 
     # similar customers from transform
-    similar_cust_pair::Matrix{Int64}
+    cust_idx::Vector{Int64}
+    similar_cust_idx::Vector{Int64}
     similarity::Vector{Float64}
 
     """
@@ -158,10 +159,11 @@ function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
 
         # call routine to find similar customers
         cust_prod_rating = recommender.cust_prod_rating * recommender.V     # reduce using SVD
-        similar_cust_pair, similarity = top_similar_customers(cosine_vec, recommender.n_max_similar_custs, cust_prod_rating)
+        cust_idx, similar_cust_idx, similarity = top_similar_customers_threaded(cosine_vec, recommender.n_max_similar_custs, cust_prod_rating)
 
-        # same similar customers
-        recommender.similar_cust_pair = similar_cust_pair
+        # save similar customers
+        recommender.cust_idx = cust_idx
+        recommender.similar_cust_idx = similar_cust_idx
         recommender.similarity = similarity
 
         # set status
@@ -223,11 +225,13 @@ function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{Cust
         recommender.cust_prod_rating = cust_prod_rating
 
         # call routine to find similar customers
-        cust_prod_rating = recommender.cust_prod_rating * recommender.V     # reduce using SVD
-        similar_cust_pair, similarity = top_similar_customers(cosine_vec, recommender.n_max_similar_custs, cust_prod_rating)
+        cust_prod_rating = cust_prod_rating * recommender.V     # reduce using SVD
+
+        cust_idx, similar_cust_idx, similarity = top_similar_customers_threaded(cosine_vec, recommender.n_max_similar_custs, cust_prod_rating)
 
         # save similar customers
-        recommender.similar_cust_pair = similar_cust_pair
+        recommender.cust_idx = cust_idx
+        recommender.similar_cust_idx = similar_cust_idx
         recommender.similarity = similarity
 
         # set status
@@ -308,11 +312,11 @@ function PRCollFiltering.similar_customers(cf::CollFilteringSVD, cust::Customer)
     cust_idx = cf.cust_idx_map[cust_id]             # customer index in sparse array
 
     # similar customer index
-    similar_idx = cf.similar_cust_pair[cf.similar_cust_pair[:, 1] .== cust_idx, 2]
-    similarity = cf.similarity[cf.similar_cust_pair[:, 1] .== cust_idx]      
+    similar_cust_idx = cf.similar_cust_idx[cf.cust_idx .== cust_idx]
+    similarity = cf.similarity[cf.cust_idx .== cust_idx]      
 
     # reverse lookup customer id from customer index
-    similar_cust_id = [key for (key, val) in cf.cust_idx_map if val ∈ similar_idx]
+    similar_cust_id = [key for (key, val) in cf.cust_idx_map if val ∈ similar_cust_idx]
 
     # map customer constructor over ids
     customer = map(Customer, similar_cust_id)
