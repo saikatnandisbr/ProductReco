@@ -18,7 +18,7 @@ agrs:       Tuple of variable number of arguments
 kwargs:     Tuple of variable number of keyword arguments 
 """
 
-function similar_customers(cf::CollFiltering, agrs...; kwargs...)::Vector{Customer}
+function similar_customers(cf::CollFiltering, agrs...; kwargs...)::Vector{SimilarCustomer}
 
     error("similar_customers method not defined in the concrete type")
 

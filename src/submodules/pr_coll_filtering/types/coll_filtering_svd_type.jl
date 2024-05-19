@@ -300,21 +300,24 @@ agrs:       Tuple of variable number of arguments
 kwargs:     Tuple of variable number of keyword arguments 
 """
 
-function PRCollFiltering.similar_customers(cf::CollFilteringSVD, cust::Customer)::Vector{Customer}
+function PRCollFiltering.similar_customers(cf::CollFilteringSVD, cust::Customer)::Vector{SimilarCustomer}
 
-    !istransformed(cf) && error("Recommender not transformed, cannot return similar customers")
+    !ProductReco.istransformed(cf) && error("Recommender not transformed, cannot return similar customers")
 
     cust_id = id(cust)                              # customer id
     cust_idx = cf.cust_idx_map[cust_id]             # customer index in sparse array
 
     # similar customer indices
-    similar_idx = cf.similar_cust_pair[cf.similar_cust_pair[:, 1] .== cust_idx, 2]      
+    similar_idx = cf.similar_cust_pair[cf.similar_cust_pair[:, 1] .== cust_idx, 2]
+    similarity = cf.similarity[cf.similar_cust_pair[:, 1] .== cust_idx]      
 
     # reverse lookup customer id from customer index
-    similar_id = [key for (key, val) in cf.cust_idx_map if val ∈ similar_idx]
+    similar_cust_id = [key for (key, val) in cf.cust_idx_map if val ∈ similar_idx]
 
     # map constructore over ids
-    similar_customer = map(Customer, similar_id)
+    customer = map(Customer, similar_cust_id)
+
+    similar_customer = [(customer[i], similarity[i]) for i in 1:length(customer)]
 
     return similar_customer
 end
