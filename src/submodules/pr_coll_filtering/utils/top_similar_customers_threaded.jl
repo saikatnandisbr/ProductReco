@@ -27,16 +27,17 @@ function top_similar_customers_threaded(fn::Function, top_n::Int64, cust_prod_ra
     n_threads = length(thread_idx)
 
     # vectors to store output from each thread
-    cust_idx = [Vector{Int64}(0, chunk_size) for i in 1:n_threads]
-    similar_cust_idx = [Vector{Int64}(0, chunk_size) for i in 1:n_threads]
-    similarity = [Vector{Float64}(-Inf, chunk_size) for i in 1:n_threads]
+    println("Sizehint version: threads $n_threads chunk $chunk_size")
 
-    # println("$n_threads $chunk_size")
-    # for i in 1:n_threads
-    #     sizehint!(cust_idx[1], chunk_size)
-    #     sizehint!(similar_cust_idx[1], chunk_size)
-    #     sizehint!(similarity[1], chunk_size)
-    # end
+    cust_idx = [Vector{Int64}() for i in 1:n_threads]
+    similar_cust_idx = [Vector{Int64}() for i in 1:n_threads]
+    similarity = [Vector{Float64}() for i in 1:n_threads]
+
+    for i in 1:n_threads
+        sizehint!(cust_idx[1], chunk_size)
+        sizehint!(similar_cust_idx[1], chunk_size)
+        sizehint!(similarity[1], chunk_size)
+    end
 
     # threadify the outer loop
     # loop through all customer recrods
