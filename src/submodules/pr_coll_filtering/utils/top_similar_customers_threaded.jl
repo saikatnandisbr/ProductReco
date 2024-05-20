@@ -27,15 +27,19 @@ function top_similar_customers_threaded(fn::Function, top_n::Int64, cust_prod_ra
     n_threads = length(thread_idx)
 
     # vectors to store output from each thread
-    cust_idx = [Vector{Int64}() for i in 1:n_threads]
-    similar_cust_idx = [Vector{Int64}() for i in 1:n_threads]
-    similarity = [Vector{Float64}() for i in 1:n_threads]
+    cust_idx = [Vector{Int64}(undef, chunk_size * top_n) for i in 1:n_threads]
+    similar_cust_idx = [Vector{Int64}(undef, chunk_size * top_n) for i in 1:n_threads]
+    similarity = [Vector{Float64}(undef, chunk_size * top_n) for i in 1:n_threads]
 
-    for i in 1:n_threads
-        sizehint!(cust_idx[1], chunk_size)
-        sizehint!(similar_cust_idx[1], chunk_size)
-        sizehint!(similarity[1], chunk_size)
-    end
+    # cust_idx = [Vector{Int64}() for i in 1:n_threads]
+    # similar_cust_idx = [Vector{Int64}() for i in 1:n_threads]
+    # similarity = [Vector{Float64}() for i in 1:n_threads]
+
+    # for i in 1:n_threads
+    #     sizehint!(cust_idx[1], chunk_size)
+    #     sizehint!(similar_cust_idx[1], chunk_size)
+    #     sizehint!(similarity[1], chunk_size)
+    # end
 
     # threadify the outer loop
     # loop through all customer recrods
@@ -48,14 +52,20 @@ function top_similar_customers_threaded(fn::Function, top_n::Int64, cust_prod_ra
             # spawn thread
             Threads.@spawn begin
 
+                # starting location in thread specific array to update
+                curr_loc = 1
+
+                # arrays to store similar customers for each given customer
                 # allocate once outside loop
-                top_n_similar = fill(0, top_n)             # used to store indices of top similar customers
-                top_n_similarity = fill(-Inf, top_n)       # used to store similarity of top similar customers
+                top = Vector{Int64}(undef, top_n)                    # used to store index of customer
+                top_n_similar = Vector{Int64}(undef, top_n)            # used to store indices of top similar customers
+                top_n_similarity = Vector{Float64}(undef, top_n)       # used to store similarity of top similar customers
 
                 # each thread handles its own slice of data
                 for this_cust_idx in thread_idx[thread_number]
                     
                     # initialize for each loop
+                    top .= this_cust_idx
                     top_n_similar .= 0
                     top_n_similarity .= -Inf
 
@@ -75,16 +85,26 @@ function top_similar_customers_threaded(fn::Function, top_n::Int64, cust_prod_ra
                         end
                     end
 
-                    similar_custs_found = length(top_n_similar[top_n_similar .!= 0])
+                    count_similar = length(top_n_similar[top_n_similar .!= 0])
 
                     # write output to thread's own array
-                    append!(cust_idx[thread_number], fill(this_cust_idx, similar_custs_found))
-                    append!(similar_cust_idx[thread_number], top_n_similar[top_n_similar .!= 0])
+                    setindex!(cust_idx[thread_number],         top[top_n_similar .!= 0],               curr_loc:curr_loc+count_similar-1)
+                    setindex!(similar_cust_idx[thread_number], top_n_similar[top_n_similar .!= 0],     curr_loc:curr_loc+count_similar-1)
+                    setindex!(similarity[thread_number],       top_n_similarity[top_n_similar .!= 0],  curr_loc:curr_loc+count_similar-1)
+
+                    curr_loc += count_similar
+
+                    # append!(cust_idx[thread_number], fill(this_cust_idx, similar_custs_found))
+                    # append!(similar_cust_idx[thread_number], top_n_similar[top_n_similar .!= 0])
                     
-                    top_n_similarity = round.(top_n_similarity, digits=4)
-                    append!(similarity[thread_number], top_n_similarity[top_n_similar .!= 0])
+                    # top_n_similarity = round.(top_n_similarity, digits=4)
+                    # append!(similarity[thread_number], top_n_similarity[top_n_similar .!= 0])
 
                 end
+
+                resize!(cust_idx[thread_number], curr_loc-1)
+                resize!(similar_cust_idx[thread_number], curr_loc-1)
+                resize!(similarity[thread_number], curr_loc-1)
             
             end
 
