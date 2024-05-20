@@ -27,8 +27,6 @@ function top_similar_customers_threaded(fn::Function, top_n::Int64, cust_prod_ra
     n_threads = length(thread_idx)
 
     # vectors to store output from each thread
-    println("Sizehint version: threads $n_threads chunk $chunk_size")
-
     cust_idx = [Vector{Int64}() for i in 1:n_threads]
     similar_cust_idx = [Vector{Int64}() for i in 1:n_threads]
     similarity = [Vector{Float64}() for i in 1:n_threads]
