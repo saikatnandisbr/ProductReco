@@ -11,13 +11,13 @@ Returns top_n similar customers for each customer and measure of similarity betw
 
 fn:                     Function returing similarity between two vectors; higher similarity means more similar
 top_n:                  Number of most similar customers to find
-cust_prod_ratings:      Sparse ratings matrix with columns in rows and products in columns
+cust_prod_rating:       Sparse ratings matrix with columns in rows and products in columns
 """
 
-function top_similar_customers_threaded(fn::Function, top_n::Int64, cust_prod_rating::T) where {T <: Union{Matrix{Float64}, SparseMatrixCSC}}
+function top_similar_customers_threaded(fn::Function, top_n::Int64, prod_cust_rating::T) where {T <: Union{Matrix{Float64}, SparseMatrixCSC}}
 
     n_available_threads = nthreads()                          # number of Threads
-    len_data = size(cust_prod_rating, 1)                      # length of data to be split among threads
+    len_data = size(prod_cust_rating, 2)                      # length of data to be split among threads
     chunk_size = ceil(Int, len_data / n_available_threads)    # chunk size to be handled by each thread
 
     # indices of data to be handled by each thread
@@ -58,13 +58,13 @@ function top_similar_customers_threaded(fn::Function, top_n::Int64, cust_prod_ra
                     top_similar .= 0
                     top_similarity .= -Inf
 
-                    for compared_cust_idx in 1:size(cust_prod_rating, 1)
+                    for compared_cust_idx in 1:size(prod_cust_rating, 2)
 
                         # skip calculation of similarity with self
                         this_cust_idx == compared_cust_idx && continue
 
                         # similarity measure using function passed
-                        sim_score = fn(cust_prod_rating[this_cust_idx, :], cust_prod_rating[compared_cust_idx, :])
+                        sim_score = fn(prod_cust_rating[:, this_cust_idx], prod_cust_rating[:, compared_cust_idx])
 
                         # if this pair more similar than least similar pair in top n list then replace the least similar so far with new pair
                         if sim_score > minimum(top_similarity)

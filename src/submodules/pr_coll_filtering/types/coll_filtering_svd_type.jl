@@ -25,7 +25,7 @@ mutable struct CollFilteringSVD <: CollFiltering
     # customer, product, ratings data
     cust_idx_map::Dict                      # unique customer ids to index of appearance in data
     prod_idx_map::Dict                      # unique product ids to index of appearance in data
-    cust_prod_rating::SparseMatrixCSC      # sparse customer product ratings matrix
+    prod_cust_rating::SparseMatrixCSC       # sparse product customer ratings matrix
 
     # svd output from fit
     U::Matrix{Float64}            
@@ -119,8 +119,8 @@ function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerPr
         idx_customer = [cust_idx_map[id] for id in cust_vec]
         idx_product = [prod_idx_map[id] for id in prod_vec]
 
-        cust_prod_rating = sparse(idx_customer, idx_product, rating_vec)
-        recommender.cust_prod_rating = cust_prod_rating
+        prod_cust_rating = sparse(idx_product, idx_customer, rating_vec)
+        recommender.prod_cust_rating = prod_cust_rating
 
         # truncated SVD   
         n_singular_vals = min(length(cust_idx_map), length(prod_idx_map), recommender.n_max_singular_vals)
@@ -128,7 +128,7 @@ function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerPr
         seed = 123
         Random.seed!(seed)
 
-        U, s, V = tsvd(recommender.cust_prod_rating, n_singular_vals)        
+        U, s, V = tsvd(recommender.prod_cust_rating, n_singular_vals)        
         recommender.U, recommender.s, recommender.V = U, s, V
 
         # set status
@@ -158,8 +158,8 @@ function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
         recommender.transformed = false
 
         # call routine to find similar customers
-        cust_prod_rating = recommender.cust_prod_rating * recommender.V     # reduce using SVD
-        cust_idx, similar_cust_idx, similarity = top_similar_customers_threaded(cosine_vec, recommender.n_max_similar_custs, cust_prod_rating)
+        prod_cust_rating = recommender.U' * recommender.prod_cust_rating        # reduce using SVD
+        cust_idx, similar_cust_idx, similarity = top_similar_customers_threaded(cosine_vec, recommender.n_max_similar_custs, prod_cust_rating)
 
         # save similar customers
         recommender.cust_idx = cust_idx
@@ -221,12 +221,12 @@ function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{Cust
         idx_customer = [cust_idx_map[id] for id in cust_vec]
         idx_product = [prod_idx_map[id] for id in prod_vec]
 
-        cust_prod_rating = sparse(idx_customer, idx_product, rating_vec)
-        recommender.cust_prod_rating = cust_prod_rating
+        prod_cust_rating = sparse(idx_product, idx_customer, rating_vec)
+        recommender.prod_cust_rating = prod_cust_rating
 
         # call routine to find similar customers
-        cust_prod_rating = cust_prod_rating * recommender.V     # reduce using SVD
-        cust_idx, similar_cust_idx, similarity = top_similar_customers_threaded(cosine_vec, recommender.n_max_similar_custs, cust_prod_rating)
+        prod_cust_rating = recommender.U' * prod_cust_rating        # reduce using SVD
+        cust_idx, similar_cust_idx, similarity = top_similar_customers_threaded(cosine_vec, recommender.n_max_similar_custs, prod_cust_rating)
 
         # save similar customers
         recommender.cust_idx = cust_idx
