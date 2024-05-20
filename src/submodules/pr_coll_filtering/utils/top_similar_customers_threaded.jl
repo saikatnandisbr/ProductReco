@@ -31,6 +31,13 @@ function top_similar_customers_threaded(fn::Function, top_n::Int64, cust_prod_ra
     similar_cust_idx = [Vector{Int64}() for i in 1:n_threads]
     similarity = [Vector{Float64}() for i in 1:n_threads]
 
+    println("$n_threads $chunk_size")
+    for i in 1:n_threads
+        sizehint!(cust_idx[1], chunk_size)
+        sizehint!(similar_cust_idx[1], chunk_size)
+        sizehint!(similarity[1], chunk_size)
+    end
+
     # threadify the outer loop
     # loop through all customer recrods
     # for each customer generate list of top simialr customers
