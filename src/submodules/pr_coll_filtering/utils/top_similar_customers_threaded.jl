@@ -64,7 +64,7 @@ function top_similar_customers_threaded(fn::Function, top_n::Int64, prod_cust_ra
                         this_cust_idx == compared_cust_idx && continue
 
                         # similarity measure using function passed
-                        sim_score = fn(prod_cust_rating[:, this_cust_idx], prod_cust_rating[:, compared_cust_idx])
+                        sim_score = fn(view(prod_cust_rating, :, this_cust_idx), view(prod_cust_rating, :, compared_cust_idx))
 
                         # if this pair more similar than least similar pair in top n list then replace the least similar so far with new pair
                         if sim_score > minimum(top_similarity)
