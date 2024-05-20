@@ -17,6 +17,7 @@ vec2:       Second vector
 
 function cosine_vec(vec1::T, vec2::T)::Float64 where {T <: Union{Vector{Float64}, SparseVector}}
 
-    return dot(vec1, vec2) / (norm(vec1) * norm(vec2))        
+    sim_score =  dot(vec1, vec2) / (norm(vec1) * norm(vec2))        
 
+    return round(sim_score, digits=4)
 end
