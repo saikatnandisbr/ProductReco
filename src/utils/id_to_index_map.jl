@@ -1,4 +1,4 @@
-# prepare dict of values and unique indices
+# prepare dict of id values and corresponding integer indices
 
 # imports
 
