@@ -11,6 +11,9 @@ mutable struct CollFilteringSVD <: CollFiltering
     fitted::Bool
     transformed::Bool
 
+    # dummy customer id created in case new transform data is missing fit product
+    dummy_customer_id::Union{String, Int64}
+
     # customer, product, ratings data
     cust_idx_map::Dict                      # unique customer ids to index of appearance in data
     prod_idx_map::Dict                      # unique product ids to index of appearance in data
