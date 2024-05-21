@@ -10,10 +10,21 @@ kwargs:     Tuple of variable number of keyword arguments
 
 function PRCollFiltering.similar_customers(cf::CollFilteringSVD, cust::Customer)::Vector{SimilarCustomer}
 
-    !ProductReco.istransformed(cf) && error("Recommender not transformed, cannot return similar customers")
+    !ProductReco.istransformed(cf) && error("PRCollFiltering.similar_customers: Recommender not transformed, cannot continue")
 
-    cust_id = id(cust)                              # customer id
-    cust_idx = cf.cust_idx_map[cust_id]             # customer index in sparse array
+    # customer id
+    cust_id = id(cust)
+
+    # customer index
+    try
+        cust_idx = cf.cust_idx_map[cust_id]        
+    catch err
+        println("PRCollFiltering.similar_customers: Customer not present in transformed data, cannot continue")
+        error(err)
+    end
+                
+    # if no error above, can proceed
+    cust_idx = cf.cust_idx_map[cust_id]        
 
     # similar customer index
     similar_cust_idx = cf.similar_cust_idx[cf.cust_idx .== cust_idx]
