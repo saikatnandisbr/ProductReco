@@ -20,7 +20,8 @@ function PRCollFiltering.similar_customers(cf::CollFilteringSVD, cust::Customer)
     similarity = cf.similarity[cf.cust_idx .== cust_idx]      
 
     # reverse lookup customer id from customer index
-    similar_cust_id = [key for (key, val) in cf.cust_idx_map if val ∈ similar_cust_idx]
+    idx_cust_map = Dict(values(cf.cust_idx_map) .=> keys(cf.cust_idx_map))
+    similar_cust_id = [idx_cust_map[key] for key in similar_cust_idx]
 
     # map customer constructor over ids
     customer = map(Customer, similar_cust_id)
