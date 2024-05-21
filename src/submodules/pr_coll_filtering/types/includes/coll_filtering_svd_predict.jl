@@ -4,29 +4,41 @@ using LinearAlgebra
 using StatsBase
 
 """
-    function predict(recommender::CollFilteringSVD, customers::Vector{Customer})::Vector{CustomerProductReco} 
+    function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Customer})::Vector{CustomerProductReco} 
 
 Returns vector of customer product recommendations (::CustomerProductRecommendation).
 
 recommnder:     CollFilteringSVD type object
-agrs:           Tuple of variable number of arguments
-kwargs:         Tuple of variable number of keyword arguments 
+customer:       Customers for whom recommendations to be predicted 
 """
 
-function ProductReco.predict(recommender::CollFilteringSVD, customers::Vector{Customer})::Vector{CustomerProductReco}
+function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Customer})::Vector{CustomerProductReco}
 
-    predict_cust_id = id.(customers)
-    predict_cust_idx = [recommender.cust_idx_map[id] for id in predict_cust_id]
+    !ProductReco.istransformed(recommender) && error("ProductReco.predict: Recommender not transformed, cannot continue")
 
-    # gather product recommendations
+    # customer id
+    predict_cust_id = id.(customer)
+
+    # customer index
+    try
+        predict_cust_idx = predict_cust_idx = [recommender.cust_idx_map[id] for id in predict_cust_id]       
+    catch err
+        println("ProductReco.predict: Customer not present in transformed data, cannot continue")
+        error(err)
+    end
+
+    # if no error above, can proceed
+    predict_cust_idx = predict_cust_idx = [recommender.cust_idx_map[id] for id in predict_cust_id]
+
+    # accumulate product recommendations
     # (cust_idx, prod_idx, raw score)
     prod_reco = Vector{Tuple{Int64, Int64, Float64}}()
 
-    # gather product recommendations for given customer
+    # accumulate product recommendations for given customer
     # (prod_idx, raw score)
     cust_prod_reco = Vector{Tuple{Int64, Float64}}()
 
-    # gather ratings of products of similar customers
+    # accumulate ratings of products of similar customers
     # (similar_cust_idx, similarity, prod_idx, prod_rating)
     similar_cust_similarity_prod_rating = Vector{Tuple{Int64, Float64, Int64, Float64}}()
    
@@ -59,7 +71,7 @@ function ProductReco.predict(recommender::CollFilteringSVD, customers::Vector{Cu
             
         end  # end loop for similar customers 
 
-        # calculate score for each product
+        # calculate score for each product for predict customer
         for curr_prod_idx in unique(getfield.(similar_cust_similarity_prod_rating, 3))
 
             # omit product aleady existing for predict customer
@@ -67,35 +79,37 @@ function ProductReco.predict(recommender::CollFilteringSVD, customers::Vector{Cu
 
             prod_slice = getfield.(similar_cust_similarity_prod_rating, 3) .== curr_prod_idx
             similarity = getfield.(similar_cust_similarity_prod_rating, 2)[prod_slice]
-            rating = getfield.(similar_cust_similarity_prod_rating, 3)[prod_slice]
+            rating = getfield.(similar_cust_similarity_prod_rating, 4)[prod_slice]
 
             score = round(dot(similarity, rating), digits=4)
 
             push!(cust_prod_reco, (curr_prod_idx, score))
-        end
+        end  # end loop calculate score for each product for predict customer
 
-        # find top products
-        num_reco = min(recommender.n_max_reco_per_cust, length(cust_prod_reco))    # number of recommendations for predict customer
+        # recommeneded proucts with highest scores for predict customer
+        n_reco = min(recommender.n_max_reco_per_cust, length(cust_prod_reco))    # number of recommendations for predict customer
         
-        sort_seq = sortperm(getfield.(cust_prod_reco, 2), rev=true)                # sort recommendations for predict customer by score descending
+        sort_seq = sortperm(getfield.(cust_prod_reco, 2), rev=true)             # to sort recommendations by score descending
         
-        reco_prod_idx = getfield.(cust_prod_reco, 1)[sort_seq][1:num_reco]         # recommended products
-        reco_score = getfield.(cust_prod_reco, 2)[sort_seq][1:num_reco]            # raw recommendation score
+        reco_prod_idx = getfield.(cust_prod_reco, 1)[sort_seq][1:n_reco]        # top products
+        reco_score = getfield.(cust_prod_reco, 2)[sort_seq][1:n_reco]           # top scores
 
-        append!(prod_reco, collect(zip(fill(curr_predict_cust_idx, num_reco), reco_prod_idx, reco_score)))
+        # recommendations for current predict customer
+        append!(prod_reco, collect(zip(fill(curr_predict_cust_idx, n_reco), reco_prod_idx, reco_score)))
 
-        # clear accumulators
+        # clear accumulator
         resize!(similar_cust_similarity_prod_rating, 0)
         resize!(cust_prod_reco, 0)
 
     end  # end loop for predict customers
 
-    # convert reco score to relative score
+    # convert raw score to relative score
+    # if only one product then percentile rank cannot be calculated
     if length(prod_reco) == 1
         relative_reco_score = [100]
     else
-        reco_score = getfield.(prod_reco, 3)
-        relative_reco_score = [ceil(Int, percentilerank(reco_score, s)) for s in reco_score]
+        raw_score = getfield.(prod_reco, 3)  # raw scores across all generated recommendations
+        relative_score = [ceil(Int, percentilerank(raw_score, s)) for s in raw_score]
     end
 
     # convert idx to id
@@ -105,5 +119,5 @@ function ProductReco.predict(recommender::CollFilteringSVD, customers::Vector{Cu
     idx_prod_map = Dict(values(recommender.prod_idx_map) .=> keys(recommender.prod_idx_map))
     reco_prod_id = [idx_prod_map[key] for key in getfield.(prod_reco, 2)]
 
-    return collect(zip(reco_cust_id, reco_prod_id, relative_reco_score))
+    return collect(zip(reco_cust_id, reco_prod_id, relative_score))
 end
