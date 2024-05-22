@@ -24,7 +24,7 @@ function PRCollFiltering.similar_customers(cf::CollFilteringSVD, cust::Customer)
     end
                 
     # if no error above, can proceed
-    cust_idx = cf.cust_idx_map[cust_id]        
+    cust_idx = cf.cust_idx_map[cust_id]       # calculate again as try block above has own scope    
 
     # similar customer index
     similar_cust_idx = cf.similar_cust_idx[cf.cust_idx .== cust_idx]

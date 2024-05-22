@@ -21,14 +21,14 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
 
     # customer index
     try
-        predict_cust_idx = predict_cust_idx = [recommender.cust_idx_map[id] for id in predict_cust_id]       
+        predict_cust_idx = [recommender.cust_idx_map[id] for id in predict_cust_id]       
     catch err
         println("ProductReco.predict: Customer not present in transformed data, cannot continue")
         error(err)
     end
 
-    # if no error above, can proceed
-    predict_cust_idx = predict_cust_idx = [recommender.cust_idx_map[id] for id in predict_cust_id]
+    # proceed if no error - calculate again as try block above has own scope   
+    predict_cust_idx = [recommender.cust_idx_map[id] for id in predict_cust_id]
 
     # accumulate product recommendations
     # (cust_idx, prod_idx, raw score)
