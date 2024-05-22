@@ -4,15 +4,16 @@ using LinearAlgebra
 using StatsBase
 
 """
-    function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Customer})::Vector{CustomerProductReco} 
+    function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
 
 Returns vector of customer product recommendations (::CustomerProductRecommendation).
 
 recommnder:     CollFilteringSVD type object
 customer:       Customers for whom recommendations to be predicted 
+fn_score:       Function to calculate recommendation score using vectors of similarity and rating
 """
 
-function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Customer})::Vector{CustomerProductReco}
+function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
 
     !ProductReco.istransformed(recommender) && error("ProductReco.predict: Recommender not transformed, cannot continue")
 
@@ -81,7 +82,7 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
             similarity = getfield.(similar_cust_similarity_prod_rating, 2)[prod_slice]
             rating = getfield.(similar_cust_similarity_prod_rating, 4)[prod_slice]
 
-            score = round(dot(similarity, rating), digits=4)
+            score = round(fn_score(similarity, rating), digits=4)
 
             push!(cust_prod_reco, (curr_prod_idx, score))
         end  # end loop calculate score for each product for predict customer
@@ -97,7 +98,7 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
         # recommendations for current predict customer
         append!(prod_reco, collect(zip(fill(curr_predict_cust_idx, n_reco), reco_prod_idx, reco_score)))
 
-        # clear accumulator
+        # clear accumulators
         resize!(similar_cust_similarity_prod_rating, 0)
         resize!(cust_prod_reco, 0)
 
