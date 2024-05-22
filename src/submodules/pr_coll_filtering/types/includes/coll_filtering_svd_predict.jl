@@ -28,16 +28,22 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
 
     # accumulate product recommendations
     # (cust_idx, prod_idx, raw score)
-    prod_reco = Tuple((Vector{Int64}(), Vector{Int64}(), Vector{Float64}()))
+    maxlen_pr = length(predict_cust_idx) * recommender.n_max_reco_per_cust     # max length of vector in tuple
+    prod_reco = Tuple((Vector{Int64}(undef, maxlen_pr), Vector{Int64}(undef, maxlen_pr), Vector{Float64}(undef, maxlen_pr)))
+    curr_loc_prod_reco = 1                                                      # location to write next
 
     # accumulate product recommendations for given customer
     # (prod_idx, raw score)
-    cust_prod_reco = Tuple((Vector{Int64}(), Vector{Float64}()))
+    maxlen_cpr = length(recommender.prod_idx_map)                               # max length of vector in tuple
+    cust_prod_reco = Tuple((Vector{Int64}(undef, maxlen_cpr), Vector{Float64}(undef, maxlen_cpr)))
+    curr_loc_cust_prod_reco = 1                                                 # location to write next
 
     # accumulate ratings of products of similar customers
     # (similar_cust_idx, similarity, prod_idx, prod_rating)
-    similar_cust_similarity_prod_rating = Tuple((Vector{Int64}(), Vector{Float64}(), Vector{Int64}(), Vector{Float64}()))
-  
+    maxlen_scspr = length(recommender.n_max_similar_cust) * length(recommender.prod_idx_map)  # max length of vector in tuple
+    similar_cust_sim_prod_rating = Tuple((Vector{Int64}(undef, maxlen_scspr), Vector{Float64}(undef, maxlen_scspr), Vector{Int64}(undef, maxlen_scspr), Vector{Float64}(undef, maxlen_scspr)))
+    curr_loc_similar_cust_sim_prod_rating = 1                                                 # location to write next
+
     # loop through predict customers
     for (i, curr_predict_cust_idx) in enumerate(predict_cust_idx)
 
@@ -58,71 +64,76 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
             # loop throught products of similar customers
             for (k, curr_similar_cust_prod_idx) in enumerate(similar_cust_prod_idx)
 
-                push!(getfield(similar_cust_similarity_prod_rating, 1), curr_similar_cust_idx)
-                push!(getfield(similar_cust_similarity_prod_rating, 2), similarity[j])
-                push!(getfield(similar_cust_similarity_prod_rating, 3), curr_similar_cust_prod_idx)
-                push!(getfield(similar_cust_similarity_prod_rating, 4), similar_cust_prod_rating[k])
+                getfield(similar_cust_sim_prod_rating, 1)[curr_loc_similar_cust_sim_prod_rating] = curr_similar_cust_idx
+                getfield(similar_cust_sim_prod_rating, 2)[curr_loc_similar_cust_sim_prod_rating] = similarity[j]
+                getfield(similar_cust_sim_prod_rating, 3)[curr_loc_similar_cust_sim_prod_rating] = curr_similar_cust_prod_idx
+                getfield(similar_cust_sim_prod_rating, 4)[curr_loc_similar_cust_sim_prod_rating] = similar_cust_prod_rating[k]
+
+                curr_loc_similar_cust_sim_prod_rating += 1      # advance current location in accumulator
 
             end  # end loop for products of similar customers
             
         end  # end loop for similar customers 
 
         # calculate score for each product for predict customer
-        for curr_prod_idx in unique(getfield(similar_cust_similarity_prod_rating, 3))
+        for curr_prod_idx in unique(@view getfield(similar_cust_sim_prod_rating, 3)[1:curr_loc_similar_cust_sim_prod_rating-1])
 
             # omit product aleady existing for predict customer
             curr_prod_idx in predict_cust_prod_idx && continue
 
-            prod_slice = getfield(similar_cust_similarity_prod_rating, 3) .== curr_prod_idx
-            similarity = view(getfield(similar_cust_similarity_prod_rating, 2), prod_slice)
-            rating = view(getfield(similar_cust_similarity_prod_rating, 4), prod_slice)
+            # slice similar customer similarity rating records by product
+            prod_slice = (@view getfield(similar_cust_sim_prod_rating, 3)[1:curr_loc_similar_cust_sim_prod_rating-1]) .== curr_prod_idx         
+
+            # get customer similarity and customer rating for the product
+            similarity = @view (@view getfield(similar_cust_sim_prod_rating, 2)[1:curr_loc_similar_cust_sim_prod_rating-1])[prod_slice]
+            rating = @view (@view getfield(similar_cust_sim_prod_rating, 4)[1:curr_loc_similar_cust_sim_prod_rating-1])[prod_slice]
 
             score = round(fn_score(Ref(similarity), Ref(rating)), digits=4)
 
-            append!(getfield(cust_prod_reco, 1), curr_prod_idx)                          # prod index
-            append!(getfield(cust_prod_reco, 2), score)                                  # raw score
-    
+            # append to accumulators
+            getfield(cust_prod_reco, 1)[curr_loc_cust_prod_reco] = curr_prod_idx      # prod index
+            getfield(cust_prod_reco, 2)[curr_loc_cust_prod_reco] = score              # raw score
+
+            curr_loc_cust_prod_reco += 1                                              # update current location in accumulator
+
         end  # end loop calculate score for each product for predict customer
 
         # recommeneded proucts with highest scores for predict customer
-        n_reco = min(recommender.n_max_reco_per_cust, length(getfield(cust_prod_reco, 1)))      # number of recommendations for predict customer
+        n_reco = min(recommender.n_max_reco_per_cust, curr_loc_cust_prod_reco-1)                # number of recommendations for predict customer
         
-        sort_seq = sortperm(getfield(cust_prod_reco, 2), rev=true)                              # to sort recommendations by score descending
+        sort_seq = sortperm(getfield(cust_prod_reco, 2)[1:curr_loc_cust_prod_reco-1], rev=true)                         # sort by score descending
         
-        reco_prod_idx = view(view(getfield(cust_prod_reco, 1), sort_seq), 1:n_reco)             # top products
-        reco_score = view(view(getfield(cust_prod_reco, 2), sort_seq), 1:n_reco)                # top scores
+        reco_prod_idx = @view (@view (@view getfield(cust_prod_reco, 1)[1:curr_loc_cust_prod_reco-1])[sort_seq])[1:n_reco]      # top scores
+        reco_score =    @view (@view (@view getfield(cust_prod_reco, 2)[1:curr_loc_cust_prod_reco-1])[sort_seq])[1:n_reco]      # top scores
 
-        # recommendations for current predict customer
-        append!(getfield(prod_reco, 1), fill(curr_predict_cust_idx, n_reco))    # append current predict cust index
-        append!(getfield(prod_reco, 2), reco_prod_idx)                          # recommended prod index
-        append!(getfield(prod_reco, 3), reco_score)                             # raw reco score
+        # add to accumulators
+        getfield(prod_reco, 1)[curr_loc_prod_reco:curr_loc_prod_reco+n_reco-1] .= curr_predict_cust_idx   # predict customer
+        getfield(prod_reco, 2)[curr_loc_prod_reco:curr_loc_prod_reco+n_reco-1] = reco_prod_idx            # recommended product
+        getfield(prod_reco, 3)[curr_loc_prod_reco:curr_loc_prod_reco+n_reco-1] = reco_score               # raw score
+
+        curr_loc_prod_reco += n_reco    # update current location in accumulator
     
         # clear accumulators
-        for f in eachindex(similar_cust_similarity_prod_rating)
-            resize!(getfield(similar_cust_similarity_prod_rating, f), 0)
-        end
-        
-        for f in eachindex(cust_prod_reco)
-            resize!(getfield(cust_prod_reco, f), 0)
-        end
+        curr_loc_similar_cust_sim_prod_rating = 1
+        curr_loc_cust_prod_reco = 1
 
     end  # end loop for predict customers
 
     # convert raw score to relative score
     # if only one product then percentile rank cannot be calculated
-    if length(getfield(prod_reco, 1)) == 1
-        relative_reco_score = [100]
+    if curr_loc_prod_reco <= 2
+        relative_reco_score = fill(100, n_curr_loc_prod_reco-1)
     else
-        raw_score = getfield(prod_reco, 3)  # raw scores across all generated recommendations
-        relative_score = [ceil(Int, percentilerank(raw_score, s)) for s in raw_score]
+        raw_score = @view getfield(prod_reco, 3)[1:curr_loc_prod_reco-1]                # raw scores across all generated recommendations
+        relative_score = [ceil(Int, percentilerank(raw_score, s)) for s in raw_score]   # relative scores across all generated recommendations
     end
 
     # convert idx to id
     idx_cust_map = Dict(values(recommender.cust_idx_map) .=> keys(recommender.cust_idx_map))
-    reco_cust_id = [idx_cust_map[key] for key in getfield(prod_reco, 1)]
+    reco_cust_id = [idx_cust_map[key] for key in (@view getfield(prod_reco, 1)[1:curr_loc_prod_reco-1])]
     
     idx_prod_map = Dict(values(recommender.prod_idx_map) .=> keys(recommender.prod_idx_map))
-    reco_prod_id = [idx_prod_map[key] for key in getfield(prod_reco, 2)]
+    reco_prod_id = [idx_prod_map[key] for key in (@view getfield(prod_reco, 2)[1:curr_loc_prod_reco-1])]
 
     return collect(zip(reco_cust_id, reco_prod_id, relative_score))
 end
