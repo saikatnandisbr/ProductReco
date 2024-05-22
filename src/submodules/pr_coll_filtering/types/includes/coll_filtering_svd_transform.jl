@@ -1,14 +1,15 @@
 # two methods - one to transform existing data in recommender, another to transform new data
 
 """
-    function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
+    function ProductReco.transform!(recommender::CollFilteringSVD, fn_similarity::Function=cosine_vec)::CollFilteringSVD
 
 Transforms data used to fit model with fitted model.
 
 recommnder:     CollFilteringSVD type object
+fn_similarity:  Function to calculate similarity between two vectors of ratings
 """
 
-function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
+function ProductReco.transform!(recommender::CollFilteringSVD, fn_similarity::Function=cosine_vec)::CollFilteringSVD
 
     try
         # set status
@@ -18,7 +19,7 @@ function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
         prod_cust_rating = recommender.U' * recommender.prod_cust_rating        # reduce using SVD
 
         # similairy calculated based on reduced rating matrix, may be different from that calculated on rating matrix
-        cust_idx, similar_cust_idx, similarity = top_similar_customers_threaded(cosine_vec, recommender.n_max_similar_cust, prod_cust_rating)
+        cust_idx, similar_cust_idx, similarity = top_similar_customers_threaded(fn_similarity, recommender.n_max_similar_cust, prod_cust_rating)
 
         # save similar customers
         recommender.cust_idx = cust_idx
@@ -37,16 +38,16 @@ function ProductReco.transform!(recommender::CollFilteringSVD)::CollFilteringSVD
 end
 
 """
-    function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{CustomerProductRating})::CollFilteringSVD
+    function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{CustomerProductRating}, fn_similarity::Function=cosine_vec)::CollFilteringSVD
 
 Transforms new data with fitted model.
 
 recommnder:     CollFilteringSVD type object
 data:           Vector of customer product rating type (CustomerProductRating)
-
+fn_similarity:  Function to calculate similarity between two vectors of ratings
 """
 
-function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{CustomerProductRating})::CollFilteringSVD
+function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{CustomerProductRating}, fn_similarity::Function=cosine_vec)::CollFilteringSVD
 
     try
         # set status
@@ -100,7 +101,7 @@ function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{Cust
         prod_cust_rating = recommender.U' * prod_cust_rating
 
         # similairy calculated based on reduced rating matrix, may be different from that calculated on rating matrix
-        cust_idx, similar_cust_idx, similarity = top_similar_customers_threaded(cosine_vec, recommender.n_max_similar_cust, prod_cust_rating)
+        cust_idx, similar_cust_idx, similarity = top_similar_customers_threaded(fn_similarity, recommender.n_max_similar_cust, prod_cust_rating)
 
         # save similar customers
         recommender.cust_idx = cust_idx
@@ -117,3 +118,4 @@ function ProductReco.transform!(recommender::CollFilteringSVD, data::Vector{Cust
         throw(error())
     end
 end
+
