@@ -52,8 +52,8 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
 
         # similar customers and similarity
         similar_cust_slice = recommender.cust_idx .== curr_predict_cust_idx
-        similar_cust_idx = view(recommender.similar_cust_idx, similar_cust_slice)
-        similarity = view(recommender.similarity, similar_cust_slice)
+        similar_cust_idx = @view recommender.similar_cust_idx[similar_cust_slice]
+        similarity =       @view recommender.similarity[similar_cust_slice]
 
         # loop through similar customers
         for (j, curr_similar_cust_idx) in enumerate(similar_cust_idx)
