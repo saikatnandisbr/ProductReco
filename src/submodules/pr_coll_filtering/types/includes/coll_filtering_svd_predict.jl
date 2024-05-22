@@ -1,8 +1,3 @@
-# imports
-using SparseArrays
-using LinearAlgebra
-using StatsBase
-
 """
     function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
 
@@ -51,8 +46,8 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
 
         # similar customers and similarity
         similar_cust_slice = recommender.cust_idx .== curr_predict_cust_idx
-        similar_cust_idx = recommender.similar_cust_idx[similar_cust_slice]
-        similarity = recommender.similarity[similar_cust_slice]
+        similar_cust_idx = view(recommender.similar_cust_idx, similar_cust_slice)
+        similarity = view(recommender.similarity, similar_cust_slice)
 
         # loop through similar customers
         for (j, curr_similar_cust_idx) in enumerate(similar_cust_idx)
@@ -79,8 +74,8 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
             curr_prod_idx in predict_cust_prod_idx && continue
 
             prod_slice = getfield.(similar_cust_similarity_prod_rating, 3) .== curr_prod_idx
-            similarity = getfield.(similar_cust_similarity_prod_rating, 2)[prod_slice]
-            rating = getfield.(similar_cust_similarity_prod_rating, 4)[prod_slice]
+            similarity = view(getfield.(similar_cust_similarity_prod_rating, 2), prod_slice)
+            rating = view(getfield.(similar_cust_similarity_prod_rating, 4), prod_slice)
 
             score = round(fn_score(Ref(similarity), Ref(rating)), digits=4)
 
@@ -92,8 +87,8 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
         
         sort_seq = sortperm(getfield.(cust_prod_reco, 2), rev=true)             # to sort recommendations by score descending
         
-        reco_prod_idx = getfield.(cust_prod_reco, 1)[sort_seq][1:n_reco]        # top products
-        reco_score = getfield.(cust_prod_reco, 2)[sort_seq][1:n_reco]           # top scores
+        reco_prod_idx = view(view(getfield.(cust_prod_reco, 1), sort_seq), 1:n_reco)        # top products
+        reco_score = view(view(getfield.(cust_prod_reco, 2), sort_seq), 1:n_reco)           # top scores
 
         # recommendations for current predict customer
         append!(prod_reco, collect(zip(fill(curr_predict_cust_idx, n_reco), reco_prod_idx, reco_score)))
