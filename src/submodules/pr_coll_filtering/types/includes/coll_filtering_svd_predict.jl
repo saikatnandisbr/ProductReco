@@ -82,7 +82,7 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
             similarity = getfield.(similar_cust_similarity_prod_rating, 2)[prod_slice]
             rating = getfield.(similar_cust_similarity_prod_rating, 4)[prod_slice]
 
-            score = round(fn_score(similarity, rating), digits=4)
+            score = round(fn_score(Ref(similarity), Ref(rating)), digits=4)
 
             push!(cust_prod_reco, (curr_prod_idx, score))
         end  # end loop calculate score for each product for predict customer
