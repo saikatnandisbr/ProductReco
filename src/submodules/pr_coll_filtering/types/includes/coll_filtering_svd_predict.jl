@@ -102,7 +102,8 @@ function top_reco_for_customer(recommender::CollFilteringSVD, fn_score::Function
         similarity = @views similar_cust_rating[:similarity][1:nrow][prod_slice]
         rating =     @views similar_cust_rating[:rating][1:nrow][prod_slice]
 
-        score = round(fn_score(similarity, rating), digits=4)
+        # calculate raw reco score
+        score = round(fn_score(Ref(similarity), Ref(rating)), digits=4)
     
         # add to accumulator
         nrow_out = cust_prod_reco[:nrow][1] = cust_prod_reco[:nrow][1] + 1
@@ -205,22 +206,22 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
     end
 
     # convert raw score to relative score
-    n_reco = prod_reco[:nrow][1]
+    nrow = prod_reco[:nrow][1]
 
     # percentile rank requires at least two records
-    if n_reco < 2
-        relative_score = fill(100, n_reco)
+    if nrow < 2
+        relative_score = fill(100, nrow)
     else
-        raw_score = @view prod_reco[:raw_score][1:n_reco]
+        raw_score = @view prod_reco[:raw_score][1:nrow]
         relative_score = [ceil(Int, percentilerank(raw_score, s)) for s in raw_score]
     end
 
     # convert idx to id
     idx_cust_map = Dict(values(recommender.cust_idx_map) .=> keys(recommender.cust_idx_map))
-    reco_cust_id = [idx_cust_map[key] for key in prod_reco[:cust_idx][1:n_reco]]
+    reco_cust_id = [idx_cust_map[key] for key in @view prod_reco[:cust_idx][1:nrow]]
     
     idx_prod_map = Dict(values(recommender.prod_idx_map) .=> keys(recommender.prod_idx_map))
-    reco_prod_id = [idx_prod_map[key] for key in prod_reco[:prod_idx][1:n_reco]]
+    reco_prod_id = [idx_prod_map[key] for key in @view prod_reco[:prod_idx][1:nrow]]
 
     # return tuple
     return collect(zip(reco_cust_id, reco_prod_id, relative_score))
