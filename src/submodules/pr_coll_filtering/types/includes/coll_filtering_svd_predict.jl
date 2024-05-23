@@ -99,8 +99,8 @@ function top_reco_for_customer(recommender::CollFilteringSVD, fn_score::Function
         prod_slice = similar_cust_rating[:prod_idx][1:nrow] .== curr_prod_idx         
 
         # get customer similarity and customer rating for the product
-        similarity = @view similar_cust_rating[:similarity][1:nrow][prod_slice]
-        rating =     @view similar_cust_rating[:rating][1:nrow][prod_slice]
+        similarity = @views similar_cust_rating[:similarity][1:nrow][prod_slice]
+        rating =     @views similar_cust_rating[:rating][1:nrow][prod_slice]
 
         score = round(fn_score(similarity, rating), digits=4)
     
@@ -156,6 +156,7 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
     )
 
     # accumulate product recommendations for given customer
+    # initially store all candidates, later choose top ones
     max_len = length(recommender.prod_idx_map)
     cust_prod_reco = (
         nrow = Vector{Int64}(undef, 1), 
@@ -178,11 +179,11 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
     predict_cust_idx = [recommender.cust_idx_map[id] for id in predict_cust_id]
 
     # generate reco for each customer
-    prod_reco[:nrow][1] = 0     # initialize overall reco count
+    prod_reco[:nrow][1] = 0                     # initialize once
 
     for (i, curr_predict_cust_idx) in enumerate(predict_cust_idx)
 
-        # products rated by similar customer
+        # products rated by similar customers
         similar_cust_rating[:nrow][1] = 0       # initialize counter for each customer
         prod_from_similar_cust(recommender, curr_predict_cust_idx, similar_cust_rating)
 
@@ -198,8 +199,8 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
         prod_reco[:nrow][1] = row_end           # new record count
 
         prod_reco[:cust_idx][row_start:row_end] = fill(curr_predict_cust_idx, rec_count)
-        prod_reco[:prod_idx][row_start:row_end] = cust_prod_reco[:prod_idx][1:rec_count]
-        prod_reco[:raw_score][row_start:row_end] = cust_prod_reco[:raw_score][1:rec_count]
+        prod_reco[:prod_idx][row_start:row_end] = @view cust_prod_reco[:prod_idx][1:rec_count]
+        prod_reco[:raw_score][row_start:row_end] = @view cust_prod_reco[:raw_score][1:rec_count]
 
     end
 
@@ -210,7 +211,7 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
     if n_reco < 2
         relative_score = fill(100, n_reco)
     else
-        raw_score = prod_reco[:raw_score][1:n_reco]
+        raw_score = @view prod_reco[:raw_score][1:n_reco]
         relative_score = [ceil(Int, percentilerank(raw_score, s)) for s in raw_score]
     end
 
