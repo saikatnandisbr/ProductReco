@@ -166,7 +166,7 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
     # convert raw score to relative score
     n_reco = length(getfield(prod_reco, 1))
     if n_reco <= 2
-        relative_reco_score = fill(100, n_reco)
+        relative_score = fill(100, n_reco)
     else
         raw_score = getfield(prod_reco, 3)                                              # raw scores across all generated recommendations
         relative_score = [ceil(Int, percentilerank(raw_score, s)) for s in raw_score]   # relative scores across all generated recommendations
