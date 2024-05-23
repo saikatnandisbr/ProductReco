@@ -156,7 +156,7 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
     )
 
     # accumulate product recommendations for given customer
-    max_len = recommender.n_max_reco_per_cust
+    max_len = length(recommender.prod_idx_map)
     cust_prod_reco = (
         nrow = Vector{Int64}(undef, 1), 
         prod_idx=Vector{Int64}(undef, max_len), 
