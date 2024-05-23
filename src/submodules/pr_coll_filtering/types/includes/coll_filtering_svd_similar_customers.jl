@@ -1,11 +1,10 @@
 """
-    function similar_customers(cf::CollFilteringSVD, agrs...; kwargs...)::Vector{Customer}
+    function PRCollFiltering.similar_customers(cf::CollFilteringSVD, cust::Customer)::Vector{SimilarCustomer}
 
-Returns vector of customers similar to a given customer
+Return vector of customers similar to a given customer
 
 cf:         CollFilteringSVD type object
-agrs:       Tuple of variable number of arguments
-kwargs:     Tuple of variable number of keyword arguments 
+cust:       Customer object
 """
 
 function PRCollFiltering.similar_customers(cf::CollFilteringSVD, cust::Customer)::Vector{SimilarCustomer}

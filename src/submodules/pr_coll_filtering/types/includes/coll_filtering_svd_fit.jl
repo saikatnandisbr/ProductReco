@@ -2,7 +2,7 @@
 """
     function ProductReco.fit!(recommender::CollFilteringSVD, data::Vector{CustomerProductRating})::CollFilteringSVD
 
-Fits data to create model that generates product recommendations.
+Fit data to create model that generates product recommendations.
 
 recommnder:     CollFilteringSVD type object
 data:           Vector of customer product rating type (CustomerProductRating)

@@ -9,9 +9,9 @@ abstract type CollFiltering <: Recommender end
 
 # contract
 """
-    function similar_customers(cf::CollFiltering, agrs...; kwargs...)::Vector{Customer}
+    function similar_customers(cf::CollFiltering, agrs...; kwargs...)::Vector{SimilarCustomer}
 
-Returns vector of customers similar to a given customer
+Return vector of customers similar to a given customer.
 
 cf:         CollFiltering type object
 agrs:       Tuple of variable number of arguments

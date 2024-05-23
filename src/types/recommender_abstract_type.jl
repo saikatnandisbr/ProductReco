@@ -39,8 +39,8 @@ end
 """
     function fit!(recommender::Recommender, agrs...; kwargs...)::Recommender
 
-Fits data to create model that generates product recommendations.
-Returns the fitted Recommender object.
+Fit data to create model that generates product recommendations.
+Return the fitted Recommender object.
 
 recommnder:     Recommender type object
 agrs:           Tuple of variable number of arguments
@@ -56,8 +56,8 @@ end
 """
     function transform!(recommender::Recommender, agrs...; kwargs...)::Recommender
 
-Transforms data, potentially new, using fitted model.
-Returns the transformed Recommender object.
+Transform data, potentially new, using fitted model.
+Return the transformed Recommender object.
 
 recommnder:     Recommender type object
 agrs:           Tuple of variable number of arguments
@@ -73,8 +73,8 @@ end
 """
     function fit_transform!(recommender::Recommender, agrs...; kwargs...)::Recommender
 
-Fits and then transforms data using fitted model.
-Returns the transformed Recommender object.
+Fit and then transform data using fitted model.
+Return the transformed Recommender object.
 
 recommnder:     Recommender type object
 agrs:           Tuple of variable number of arguments
@@ -88,9 +88,9 @@ function fit_transform!(recommender::Recommender, agrs...; kwargs...)::Recommend
 end
 
 """
-    function predict(recommender::Recommender, agrs...; kwargs...)::Vector{CustomerProductRecommendation} 
+    function predict(recommender::Recommender, agrs...; kwargs...)::Vector{CustomerProductReco}
 
-Returns vector of customer product recommendations.
+Return vector of customer product recommendations.
 
 recommnder:     Recommender type object
 agrs:           Tuple of variable number of arguments

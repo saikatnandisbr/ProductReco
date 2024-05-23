@@ -25,15 +25,17 @@ function check_error_in_predict_call(recommender::CollFilteringSVD, customer::Ve
         
     end
 
+    return nothing
+
 end
 
 """
-    function prod_from_similar_cust(recommender::CollFilteringSVD, cust_idx::Int64)
+    function prod_from_similar_cust(recommender::CollFilteringSVD, predict_cust_idx::Int64)
 
 Return list of products rated by similar customers, along with customer similarity and product rating values.
 
-recommnder:     CollFilteringSVD type object
-cust_idx:       Customer index 
+recommnder:             CollFilteringSVD type object
+predict_cust_idx:       Customer index 
 """
 
 function prod_from_similar_cust(recommender::CollFilteringSVD, predict_cust_idx::Int64)
@@ -80,9 +82,9 @@ end
 
 Return top recommendations for given customer.
 
-recommnder:     CollFilteringSVD type object
-cust_idx:       Customer index
-fn_score:       Function to calculate recommendation score using vectors of similarity and rating 
+recommnder:             CollFilteringSVD type object
+predict_cust_idx:       Customer index
+fn_score:               Function to calculate recommendation score using vectors of similarity and rating 
 """
 
 function prod_reco_for_customer(recommender::CollFilteringSVD, predict_cust_idx::Int64, fn_score::Function)
@@ -91,7 +93,7 @@ function prod_reco_for_customer(recommender::CollFilteringSVD, predict_cust_idx:
     # (prod_idx, raw score)
     cust_prod_reco = Tuple((Vector{Int64}(), Vector{Float64}()))
 
-    # products rated by similar customers
+    # candidates for recommendation - products rated by similar customers
     candidate_prod = prod_from_similar_cust(recommender, predict_cust_idx)
 
     # score candidate products
@@ -127,7 +129,7 @@ end
 """
     function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
 
-Returns vector of customer product recommendations (::CustomerProductRecommendation).
+Return vector of customer product recommendations.
 
 recommnder:     CollFilteringSVD type object
 customer:       Customers for whom recommendations to be predicted 

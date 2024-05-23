@@ -39,7 +39,7 @@ mutable struct CollFilteringSVD <: CollFiltering
     n_max_reco_per_cust:   Max number of product recommendations per customer
     """
 
-    function CollFilteringSVD(; n_max_singular_val::Int64=100, n_max_similar_cust::Int64=10, n_max_reco_per_cust=20)
+    function CollFilteringSVD(; n_max_singular_val::Int64=100, n_max_similar_cust::Int64=20, n_max_reco_per_cust=20)
         self = new()
         self.n_max_singular_val = n_max_singular_val
         self.n_max_similar_cust = n_max_similar_cust

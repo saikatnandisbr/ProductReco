@@ -5,13 +5,13 @@ using SparseArrays
 using Base.Threads
 
 """
-    function top_similar_customers_threaded(fn_sim::Function, top_n::Int64, cust_prod_rating::T) where {T <: Union{Matrix{Float64}, SparseMatrixCSC}}
+    function top_similar_customers_threaded(fn_sim::Function, top_n::Int64, prod_cust_rating::T) where {T <: Union{Matrix{Float64}, SparseMatrixCSC}}
 
-Returns top_n similar customers for each customer and measure of similarity between the pairs.
+Return top_n similar customers for each customer and measure of similarity between the pairs.
 
-fn:                     Function returing similarity between two vectors; higher similarity means more similar
+fn_sim:                 Function returing similarity between two vectors; higher similarity means more similar
 top_n:                  Number of most similar customers to find
-cust_prod_rating:       Sparse ratings matrix with columns in rows and products in columns
+prod_cust_rating:       Sparse ratings matrix with customers in columns
 """
 
 function top_similar_customers_threaded(fn_sim::Function, top_n::Int64, prod_cust_rating::T) where {T <: Union{Matrix{Float64}, SparseMatrixCSC}}
@@ -80,10 +80,6 @@ function top_similar_customers_threaded(fn_sim::Function, top_n::Int64, prod_cus
                     cust_idx[thread_number][curr_loc:curr_loc+count_similar-1]         = @view top[top_similar .!= 0]
                     similar_cust_idx[thread_number][curr_loc:curr_loc+count_similar-1] = @view top_similar[top_similar .!= 0]
                     similarity[thread_number][curr_loc:curr_loc+count_similar-1]       = @view top_similarity[top_similar .!= 0]
-
-                    # setindex!(cust_idx[thread_number],         top[top_similar .!= 0],             curr_loc:curr_loc+count_similar-1)
-                    # setindex!(similar_cust_idx[thread_number], top_similar[top_similar .!= 0],     curr_loc:curr_loc+count_similar-1)
-                    # setindex!(similarity[thread_number],       top_similarity[top_similar .!= 0],  curr_loc:curr_loc+count_similar-1)
 
                     # update location in array
                     curr_loc += count_similar
