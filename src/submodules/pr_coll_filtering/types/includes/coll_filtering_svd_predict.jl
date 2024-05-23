@@ -103,7 +103,7 @@ function top_reco_for_customer(recommender::CollFilteringSVD, fn_score::Function
         rating =     @views similar_cust_rating[:rating][1:nrow][prod_slice]
 
         # calculate raw reco score
-        score = round(fn_score(Ref(similarity), Ref(rating)), digits=4)
+        score = round(fn_score(similarity, rating), digits=4)
     
         # add to accumulator
         nrow_out = cust_prod_reco[:nrow][1] = cust_prod_reco[:nrow][1] + 1
