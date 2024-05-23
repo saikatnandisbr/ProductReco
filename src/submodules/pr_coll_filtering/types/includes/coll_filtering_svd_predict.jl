@@ -179,5 +179,6 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
     idx_prod_map = Dict(values(recommender.prod_idx_map) .=> keys(recommender.prod_idx_map))
     reco_prod_id = [idx_prod_map[key] for key in getfield(prod_reco, 2)]
 
+    # return tuple
     return collect(zip(reco_cust_id, reco_prod_id, relative_score))
 end
