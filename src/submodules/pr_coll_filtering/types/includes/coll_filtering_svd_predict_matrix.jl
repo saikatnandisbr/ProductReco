@@ -50,7 +50,7 @@ function prod_cust_raw_score(recommender::CollFilteringSVD, cust_idx::Vector{Int
     # populate with similarity for customers in agrument
     for this_cust_idx in cust_idx
         for (i, this_similar_cust_idx) in enumerate(@view recommender.similar_cust_idx[recommender.cust_idx .== this_cust_idx])
-            similar_cust_cust_sim[this_similar_cust_idx, this_cust_idx] = @views recommender.similarity[recommender.cust_idx .== this_cust_idx][i]
+            similar_cust_cust_sim[this_similar_cust_idx, this_cust_idx] = @view recommender.similarity[recommender.cust_idx .== this_cust_idx][i]
         end
     end
 
@@ -61,7 +61,7 @@ function prod_cust_raw_score(recommender::CollFilteringSVD, cust_idx::Vector{Int
             # compute score for prod if not rated by cust
             !iszero(recommender.prod_cust_rating[i, j]) && continue
             
-            raw_score[i, j] = fn_score((@view recommender.prod_cust_rating[i, :]), (@view similar_cust_cust_sim[:, j]))
+            raw_score[i, j] = fn_score(recommender.prod_cust_rating[i, :], similar_cust_cust_sim[:, j])
 
         end
     end
