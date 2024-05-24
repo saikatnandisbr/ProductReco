@@ -1,21 +1,21 @@
 # helper functions used by predict
 """
-    function check_error_in_predict_call(recommender::CollFilteringSVD, customer::Vector{Customer})
+    function check_error_in_predict_call(recommender::CollFilteringSVD, predict_cust::Vector{Customer})
 
 Raise error if exception conditions exist in agruments to predict.
 
 recommnder:     CollFilteringSVD type object
-customer:       Customers for whom recommendations to be predicted 
+predict_cust:   Customers for whom recommendations to be predicted 
 """
 
-function check_error_in_predict_call(recommender::CollFilteringSVD, customer::Vector{Customer})
+function check_error_in_predict_call(recommender::CollFilteringSVD, predict_cust::Vector{Customer})
 
     !ProductReco.istransformed(recommender) && error("ProductReco.predict: Recommender not transformed, cannot continue")
 
     # check if each customer exists in transformed recommender
     try
 
-        predict_cust_id = id.(customer)
+        predict_cust_id = id.(predict_cust)
         _ = [recommender.cust_idx_map[id] for id in predict_cust_id]       
 
     catch err
@@ -40,11 +40,13 @@ raw_score:              Sparse matrix to populate with customer in column
 fn_score:               Function to calculate recommendation score using vectors of similarity and rating
 """
 
-function prod_cust_raw_score(recommender::CollFilteringSVD, cust_idx::Vector::{Int64}, raw_score::AbstractMatrix, fn_score::Function=dot)
+function prod_cust_raw_score(recommender::CollFilteringSVD, cust_idx::Vector{Int64}, raw_score::AbstractMatrix, fn_score::Function=dot)
+
+    println("inside matrix")
 
     # empty sparse matrix with similar customers in rows, customers in columns
     similar_cust_cust_sim = spzeros(length(recommender.cust_idx_map), length(recommender.cust_idx_map))
-t
+
     # populate with similarity for customers in agrument
     for this_cust_idx in cust_idx
         for (i, this_similar_cust_idx) in enumerate(@view recommender.similar_cust_idx[recommender.cust_idx .== this_cust_idx])
@@ -70,12 +72,12 @@ end
 
 # predict
 """
-    function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
+    function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
 
 Return vector of customer product recommendations.
 
 recommnder:     CollFilteringSVD type object
-customer:       Customers for whom recommendations to be predicted 
+predict_cust:   Customers for whom recommendations to be predicted 
 fn_score:       Function to calculate recommendation score using vectors of similarity and rating
 """
 
@@ -83,7 +85,7 @@ function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector
 
 
     # check error in call to predict
-    check_error_in_predict_call(recommender, customer)
+    check_error_in_predict_call(recommender, predict_cust)
 
     # pre-allocate array to accumate predictions
     n_reco = min(length(recommender.prod_idx_map), recommender.n_max_reco_per_cust)    # recommendations per customer
