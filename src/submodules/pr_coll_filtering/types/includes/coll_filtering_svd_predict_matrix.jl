@@ -30,19 +30,19 @@ function check_error_in_predict_call(recommender::CollFilteringSVD, predict_cust
 end
 
 """
-    function prod_cust_raw_score(recommender::CollFilteringSVD, cust_idx::Vector::{Int64}, raw_score::SparseMatrixCSC, fn_score::Function=dot)
+    function calc_reco_score(recommender::CollFilteringSVD, cust_idx::Vector::{Int64}, prod_cust_raw_score::SparseMatrixCSC)
 
 Return raw score for new products for customer.
 
 recommnder:             CollFilteringSVD type object
 cust_idx:               Indices of customers to generate reco for
-raw_score:              Sparse matrix to populate with customer in column
-fn_score:               Function to calculate recommendation score using vectors of similarity and rating
+prod_cust_raw_score:    Sparse matrix to populate with customer in column
 """
 
-function prod_cust_raw_score(recommender::CollFilteringSVD, cust_idx::Vector{Int64}, raw_score::AbstractMatrix, fn_score::Function=dot)
+function calc_reco_score(recommender::CollFilteringSVD, cust_idx::Vector{Int64})
 
-    println("inside matrix")
+    # sparse matrix to store recommendations
+    prod_cust_raw_score = spzeros(length(recommender.prod_idx_map), length(recommender.cust_idx_map))      # customer in column
 
     # empty sparse matrix with similar customers in rows, customers in columns
     similar_cust_cust_sim = spzeros(length(recommender.cust_idx_map), length(recommender.cust_idx_map))
@@ -55,34 +55,28 @@ function prod_cust_raw_score(recommender::CollFilteringSVD, cust_idx::Vector{Int
     end
 
     # caculate raw reco scores for products for each customer
-    for i in axes(recommender.prod_cust_rating, 1)     # ratings by in rows
-        for j in cust_idx                              # customers in columns
+    prod_cust_raw_score = recommender.prod_cust_rating * similar_cust_cust_sim
 
-            # compute score for prod if not rated by cust
-            !iszero(recommender.prod_cust_rating[i, j]) && continue
-            
-            raw_score[i, j] = fn_score(recommender.prod_cust_rating[i, :], similar_cust_cust_sim[:, j])
-
-        end
+    # zero out score if customer has raing for product
+    for (i, j, _) in zip(findnz(recommender.prod_cust_rating)...)
+        prod_cust_raw_score[i, j] = 0
     end
 
-    return nothing
+    return prod_cust_raw_score
     
 end
 
 # predict
 """
-    function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
+    function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector{Customer})::Vector{CustomerProductReco} 
 
 Return vector of customer product recommendations.
 
 recommnder:     CollFilteringSVD type object
 predict_cust:   Customers for whom recommendations to be predicted 
-fn_score:       Function to calculate recommendation score using vectors of similarity and rating
 """
 
-function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
-
+function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector{Customer})::Vector{CustomerProductReco} 
 
     # check error in call to predict
     check_error_in_predict_call(recommender, predict_cust)
@@ -100,27 +94,45 @@ function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector
     
     prod_reco[:nrow][1] = 0     # initialize
 
-    # sparse matrix to store recommendations
-    raw_score = spzeros(length(recommender.prod_idx_map), length(recommender.cust_idx_map))      # customer in column
-
     # customer indices
     cust_id = id.(predict_cust)
     cust_idx = [recommender.cust_idx_map[id] for id in cust_id]
 
     # generate raw scores
-    prod_cust_raw_score(recommender, cust_idx, raw_score, fn_score)
+    prod_cust_raw_score = calc_reco_score(recommender, cust_idx)
 
     # retain top scored products
-    for (j, col) in enumerate(eachcol(raw_score))                 # j is customer index
-        for i in sortperm(col, rev=true)[1:n_reco]                # i is product index
+    for (this_cust_idx, prod_score_col) in enumerate(eachcol(prod_cust_raw_score))
+
+        # extract non-zero prod scores from sparse vector
+        nz_prod_score_col = findnz(prod_score_col)
+        prod_idx = nz_prod_score_col[1]
+        raw_score = nz_prod_score_col[2]
+        
+        # if number of products more than n_reco then retain top n_reco
+        if length(prod_idx) > n_reco
+
+            top_slice = sortperm(raw_score, rev=true)[1:n_reco]
+            prod_idx = prod_idx[top_slice]
+            raw_score = raw_score[top_slice]
+            
+        end 
+
+        for (i, this_prod_idx) in enumerate(prod_idx)
+
+            # omit scores apporx 0
+            raw_score[i] ≈ 0.0 && continue
+            
+            # save in accumulator
             nrow = prod_reco[:nrow][1] += 1
 
-            prod_reco[:cust_idx][nrow] = j
-            prod_reco[:prod_idx][nrow] = i
-            prod_reco[:raw_score][nrow] = raw_score[i, j]
+            prod_reco[:cust_idx][nrow] = this_cust_idx
+            prod_reco[:prod_idx][nrow] = this_prod_idx
+            prod_reco[:raw_score][nrow] = raw_score[i]
 
-        end
-    end
+        end   # end processing prod for cust
+
+    end  # end processing all cust
 
     # convert raw score to relative score
     nrow = prod_reco[:nrow][1]
