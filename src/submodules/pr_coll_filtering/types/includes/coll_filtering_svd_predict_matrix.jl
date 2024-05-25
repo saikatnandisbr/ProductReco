@@ -122,16 +122,24 @@ function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector
             
         end 
 
-        for (i, this_prod_idx) in enumerate(prod_idx)
+        # save in accumulator
+        nrow_start = prod_reco[:nrow][1] + 1
+        add_recs = length(prod_idx)
+        nrow = prod_reco[:nrow][1] = nrow_start + add_recs - 1
 
-            # save in accumulator
-            nrow = prod_reco[:nrow][1] += 1
+        prod_reco[:cust_idx][nrow_start:nrow] = fill(this_cust_idx, add_recs)
+        prod_reco[:prod_idx][nrow_start:nrow] = prod_idx
+        prod_reco[:raw_score][nrow_start:nrow] = raw_score
 
-            prod_reco[:cust_idx][nrow] = this_cust_idx
-            prod_reco[:prod_idx][nrow] = this_prod_idx
-            prod_reco[:raw_score][nrow] = raw_score[i]
+        # for (i, this_prod_idx) in enumerate(prod_idx)
 
-        end   # end processing prod for cust
+        #     nrow = prod_reco[:nrow][1] += 1
+
+        #     prod_reco[:cust_idx][nrow] = this_cust_idx
+        #     prod_reco[:prod_idx][nrow] = this_prod_idx
+        #     prod_reco[:raw_score][nrow] = raw_score[i]
+
+        # end   # end processing prod for cust
 
     end  # end processing all cust
 
