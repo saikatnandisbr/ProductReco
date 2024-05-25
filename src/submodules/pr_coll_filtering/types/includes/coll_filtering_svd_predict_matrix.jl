@@ -30,13 +30,12 @@ function check_error_in_predict_call(recommender::CollFilteringSVD, predict_cust
 end
 
 """
-    function calc_reco_score(recommender::CollFilteringSVD, cust_idx::Vector::{Int64}, prod_cust_raw_score::SparseMatrixCSC)
+    function calc_reco_score(recommender::CollFilteringSVD, cust_idx::Vector{Int64})
 
-Return raw score for new products for customer.
+Return sparse raw score matrix for recommended new products for customers.
 
 recommnder:             CollFilteringSVD type object
 cust_idx:               Indices of customers to generate reco for
-prod_cust_raw_score:    Sparse matrix to populate with customer in column
 """
 
 function calc_reco_score(recommender::CollFilteringSVD, cust_idx::Vector{Int64})
@@ -92,7 +91,7 @@ function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector
         raw_score=Vector{Float64}(undef, max_len)
     )
     
-    prod_reco[:nrow][1] = 0     # initialize
+    prod_reco[:nrow][1] = 0     # initialize record count
 
     # customer indices
     cust_id = id.(predict_cust)
@@ -109,6 +108,11 @@ function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector
         prod_idx = nz_prod_score_col[1]
         raw_score = nz_prod_score_col[2]
         
+        # remove prod with score floating point 0.0
+        nz_slice = raw_score .!== 0.0               # on rhs integer 0 does not create right slice
+        prod_idx = prod_idx[nz_slice]
+        raw_score = raw_score[nz_slice]
+
         # if number of products more than n_reco then retain top n_reco
         if length(prod_idx) > n_reco
 
@@ -120,9 +124,6 @@ function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector
 
         for (i, this_prod_idx) in enumerate(prod_idx)
 
-            # omit scores apporx 0
-            raw_score[i] ≈ 0.0 && continue
-            
             # save in accumulator
             nrow = prod_reco[:nrow][1] += 1
 
