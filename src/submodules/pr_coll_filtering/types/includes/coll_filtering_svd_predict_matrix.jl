@@ -131,16 +131,6 @@ function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector
         prod_reco[:prod_idx][nrow_start:nrow] = prod_idx
         prod_reco[:raw_score][nrow_start:nrow] = raw_score
 
-        # for (i, this_prod_idx) in enumerate(prod_idx)
-
-        #     nrow = prod_reco[:nrow][1] += 1
-
-        #     prod_reco[:cust_idx][nrow] = this_cust_idx
-        #     prod_reco[:prod_idx][nrow] = this_prod_idx
-        #     prod_reco[:raw_score][nrow] = raw_score[i]
-
-        # end   # end processing prod for cust
-
     end  # end processing all cust
 
     # convert raw score to relative score
