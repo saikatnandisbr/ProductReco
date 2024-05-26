@@ -47,7 +47,7 @@ function top_prod_for_cust(recommender::CollFilteringSVD, cust_idx::Vector{Int64
 
     # populate with similarity for customers in agrument
     for this_cust_idx in cust_idx
-        for (i, this_similar_cust_idx) in enumerate(@view recommender.similar_cust_idx[recommender.cust_idx .== this_cust_idx])
+        for (i, this_similar_cust_idx) in enumerate(recommender.similar_cust_idx[recommender.cust_idx .== this_cust_idx])
             similar_cust_cust_sim[this_similar_cust_idx, this_cust_idx] = recommender.similarity[recommender.cust_idx .== this_cust_idx][i]
         end
     end
@@ -139,16 +139,16 @@ function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector
     if nrow < 2
         relative_score = fill(100, nrow)
     else
-        raw_score = @view prod_reco[:raw_score][1:nrow]
+        raw_score = prod_reco[:raw_score][1:nrow]
         relative_score = [ceil(Int, percentilerank(raw_score, s)) for s in raw_score]
     end
 
     # convert idx to id
     idx_cust_map = Dict(values(recommender.cust_idx_map) .=> keys(recommender.cust_idx_map))
-    reco_cust_id = [idx_cust_map[key] for key in @view prod_reco[:cust_idx][1:nrow]]
+    reco_cust_id = [idx_cust_map[key] for key in prod_reco[:cust_idx][1:nrow]]
     
     idx_prod_map = Dict(values(recommender.prod_idx_map) .=> keys(recommender.prod_idx_map))
-    reco_prod_id = [idx_prod_map[key] for key in @view prod_reco[:prod_idx][1:nrow]]
+    reco_prod_id = [idx_prod_map[key] for key in prod_reco[:prod_idx][1:nrow]]
 
     # return tuple
     return collect(zip(reco_cust_id, reco_prod_id, relative_score))
