@@ -55,6 +55,10 @@ function top_prod_for_cust(recommender::CollFilteringSVD, cust_idx::Vector{Int64
     # number of max reco per customer
     n_reco = min(length(recommender.prod_idx_map), recommender.n_max_reco_per_cust) 
 
+    # pre-allocate vectors to store prod recs for each customer
+    prod_idx_vec = collect(1:length(recommender.prod_idx_map))
+    prod_score_vec = Vector{Float64}(undef, length(recommender.prod_idx_map))
+
     for (this_cust_idx, similarity_vec) in enumerate(eachcol(similar_cust_cust_sim))
         
         # scores for candidate products
@@ -66,29 +70,34 @@ function top_prod_for_cust(recommender::CollFilteringSVD, cust_idx::Vector{Int64
         end
 
         # remove prod with score floating point 0.0
-        prod_idx_vec = [idx for idx in eachindex(prod_score_vec) if prod_score_vec[idx] .!== 0.0]
-        prod_score_vec = prod_score_vec[prod_score_vec .!== 0.0]
+        prod_idx_nz_vec = @view prod_idx_vec[prod_score_vec .!= 0.0]
+        prod_score_nz_vec = @view prod_score_vec[prod_score_vec .!== 0.0]
 
         # if no product for customer then skip to next customer
-        (length(prod_idx_vec) == 0) && continue
+        (length(prod_idx_nz_vec) == 0) && continue
 
         # retain top products for customer
-        if length(prod_idx_vec) > n_reco
+        if length(prod_idx_nz_vec) > n_reco
 
-            top_slice = sortperm(prod_score_vec, rev=true)[1:n_reco]
-            prod_idx_vec = prod_idx_vec[top_slice]
-            prod_score_vec = prod_score_vec[top_slice]
-            
+            top_slice = sortperm(prod_score_nz_vec, rev=true)[1:n_reco]
+            prod_idx_top_vec = @view prod_idx_nz_vec[top_slice]
+            prod_score_top_vec = @view prod_score_nz_vec[top_slice]
+
+        else
+
+            prod_idx_top_vec = @view prod_idx_nz_vec[:]
+            prod_score_top_vec = @view prod_score_nz_vec[:]
+
         end 
 
         # save in accumulator
-        add_rows = length(prod_idx_vec)
+        add_rows = length(prod_idx_top_vec)
         nrow_start = prod_reco[:nrow][1] + 1
         nrow_end = prod_reco[:nrow][1] = nrow_start + add_rows - 1
 
         prod_reco[:cust_idx][nrow_start:nrow_end] = fill(this_cust_idx, add_rows)
-        prod_reco[:prod_idx][nrow_start:nrow_end] = prod_idx_vec
-        prod_reco[:raw_score][nrow_start:nrow_end] = prod_score_vec
+        prod_reco[:prod_idx][nrow_start:nrow_end] = prod_idx_top_vec
+        prod_reco[:raw_score][nrow_start:nrow_end] = prod_score_top_vec
 
     end
 
