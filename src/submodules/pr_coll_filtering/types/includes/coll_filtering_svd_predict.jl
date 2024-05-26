@@ -1,21 +1,21 @@
 # helper functions used by predict
 """
-    function check_error_in_predict_call(recommender::CollFilteringSVD, customer::Vector{Customer})
+    function check_error_in_predict_call(recommender::CollFilteringSVD, predict_cust::Vector{Customer})
 
 Raise error if exception conditions exist in agruments to predict.
 
 recommnder:     CollFilteringSVD type object
-customer:       Customers for whom recommendations to be predicted 
+predict_cust:   Customers for whom recommendations to be predicted 
 """
 
-function check_error_in_predict_call(recommender::CollFilteringSVD, customer::Vector{Customer})
+function check_error_in_predict_call(recommender::CollFilteringSVD, predict_cust::Vector{Customer})
 
     !ProductReco.istransformed(recommender) && error("ProductReco.predict: Recommender not transformed, cannot continue")
 
     # check if each customer exists in transformed recommender
     try
 
-        predict_cust_id = id.(customer)
+        predict_cust_id = id.(predict_cust)
         _ = [recommender.cust_idx_map[id] for id in predict_cust_id]       
 
     catch err
@@ -30,180 +30,107 @@ function check_error_in_predict_call(recommender::CollFilteringSVD, customer::Ve
 end
 
 """
-    function prod_from_similar_cust(recommender::CollFilteringSVD, predict_cust_idx::Int64)
+    function top_prod_for_cust(recommender::CollFilteringSVD, cust_idx::Vector{Int64}, fn_score::Function, prod_reco::NamedTuple)
 
-Return list of products rated by similar customers, along with customer similarity and product rating values.
-
-recommnder:             CollFilteringSVD type object
-predict_cust_idx:       Customer index 
-similar_cust_rating:    Named tuple to populate
-"""
-
-function prod_from_similar_cust(recommender::CollFilteringSVD, predict_cust_idx::Int64, similar_cust_rating::NamedTuple)
-
-    # products of predict customer - to be excluded from candidate output
-    predict_cust_prod_idx = findnz(recommender.prod_cust_rating[:, predict_cust_idx])[1]
-
-    # similar customers and similarity
-    similar_cust_slice = recommender.cust_idx .== predict_cust_idx
-    similar_cust_idx = @view recommender.similar_cust_idx[similar_cust_slice]
-    similarity =       @view recommender.similarity[similar_cust_slice]
-
-    # loop through similar customers
-    for (i, curr_similar_cust_idx) in enumerate(similar_cust_idx)
-        
-        similar_cust_prod_idx = findnz(recommender.prod_cust_rating[:, curr_similar_cust_idx])[1]
-        similar_cust_prod_rating = findnz(recommender.prod_cust_rating[:, curr_similar_cust_idx])[2]
-
-        # loop throught products of similar customers
-        for (j, curr_similar_cust_prod_idx) in enumerate(similar_cust_prod_idx)
-
-            # skip if predict customer rated similar customer product
-            in(curr_similar_cust_prod_idx, predict_cust_prod_idx) && continue
-
-            # record counter
-            nrow = similar_cust_rating[:nrow][1] = similar_cust_rating[:nrow][1] + 1       
-
-            # data
-            similar_cust_rating[:cust_idx][nrow] = curr_similar_cust_idx
-            similar_cust_rating[:similarity][nrow] = similarity[i]
-            similar_cust_rating[:prod_idx][nrow] = curr_similar_cust_prod_idx
-            similar_cust_rating[:rating][nrow] = similar_cust_prod_rating[j]
-
-        end  # end loop for products of similar customers
-        
-    end  # end loop for similar customers 
-
-    return nothing
-end
-
-"""
-    function top_reco_for_customer(fn_score::Function, similar_cust_rating::NamedTuple, cust_prod_reco::NamedTuple)
-
-Return top recommendations for given customer.
+Return sparse raw score matrix for recommended new products for customers.
 
 recommnder:             CollFilteringSVD type object
-fn_score:               Function to calculate recommendation score using vectors of similarity and rating
-similar_cust_rating:    Input products rated by similar customers
-cust_prod_reco:         Output top recos for customer
+cust_idx:               Indices of customers to generate reco for
+prod_reco:              Pre-allocated tuple to accumulate recommendations
+fn_score:               Function to calculate score from similairty and rating
 """
 
-function top_reco_for_customer(recommender::CollFilteringSVD, fn_score::Function, similar_cust_rating::NamedTuple, cust_prod_reco::NamedTuple)
+function top_prod_for_cust(recommender::CollFilteringSVD, cust_idx::Vector{Int64}, prod_reco::NamedTuple, fn_score::Function=dot)
 
-    # score candidate products
-    nrow = similar_cust_rating[:nrow][1]
+    # empty sparse matrix with similar customers in rows, customers in columns
+    similar_cust_cust_sim = spzeros(length(recommender.cust_idx_map), length(recommender.cust_idx_map))
 
-    for curr_prod_idx in unique(similar_cust_rating[:prod_idx][1:nrow])
-    
-        # slice similar customer similarity rating records by product
-        prod_slice = similar_cust_rating[:prod_idx][1:nrow] .== curr_prod_idx         
-
-        # get customer similarity and customer rating for the product
-        similarity = @views similar_cust_rating[:similarity][1:nrow][prod_slice]
-        rating =     @views similar_cust_rating[:rating][1:nrow][prod_slice]
-
-        # calculate raw reco score
-        score = round(fn_score(similarity, rating), digits=4)
-    
-        # add to accumulator
-        nrow_out = cust_prod_reco[:nrow][1] = cust_prod_reco[:nrow][1] + 1
-
-        cust_prod_reco[:prod_idx][nrow_out] = curr_prod_idx
-        cust_prod_reco[:raw_score][nrow_out] = score
+    # populate with similarity for customers in agrument
+    for this_cust_idx in cust_idx
+        for (i, this_similar_cust_idx) in enumerate(recommender.similar_cust_idx[recommender.cust_idx .== this_cust_idx])
+            similar_cust_cust_sim[this_similar_cust_idx, this_cust_idx] = recommender.similarity[recommender.cust_idx .== this_cust_idx][i]
+        end
     end
 
-    # top score products
-    nrow = cust_prod_reco[:nrow][1]
-    n_reco = min(recommender.n_max_reco_per_cust, nrow)                             # number of recommendations for customer
-        
-    sort_seq = sortperm(cust_prod_reco[:raw_score][1:nrow], rev=true)               # sort by score descending
-    
-    top_prod_idx =   @views cust_prod_reco[:prod_idx][1:nrow][sort_seq][1:n_reco]   # top products
-    top_prod_score = @views cust_prod_reco[:raw_score][1:nrow][sort_seq][1:n_reco]  # top scores
+    # number of max reco per customer
+    n_reco = min(length(recommender.prod_idx_map), recommender.n_max_reco_per_cust) 
 
-    # update output with top score products
-    cust_prod_reco[:nrow][1] = n_reco
-    cust_prod_reco[:prod_idx][1:n_reco] = top_prod_idx
-    cust_prod_reco[:raw_score][1:n_reco] = top_prod_score
+    for (this_cust_idx, similarity_vec) in enumerate(eachcol(similar_cust_cust_sim))
+        
+        # scores for candidate products
+        prod_score_vec = [fn_score(rating_vec, similarity_vec) for rating_vec in eachrow(recommender.prod_cust_rating)]
+
+        # omit product if already rated by customer
+        for this_prod_idx in findnz(recommender.prod_cust_rating[:, this_cust_idx])[1]
+            prod_score_vec[this_prod_idx] = 0.0
+        end
+
+        # remove prod with score floating point 0.0
+        prod_idx_vec = [idx for idx in eachindex(prod_score_vec) if prod_score_vec[idx] .!== 0.0]
+        prod_score_vec = prod_score_vec[prod_score_vec .!== 0.0]
+
+        # if no product for customer then skip to next customer
+        (length(prod_idx_vec) == 0) && continue
+
+        # retain top products for customer
+        if length(prod_idx_vec) > n_reco
+
+            top_slice = sortperm(prod_score_vec, rev=true)[1:n_reco]
+            prod_idx_vec = prod_idx_vec[top_slice]
+            prod_score_vec = prod_score_vec[top_slice]
+            
+        end 
+
+        # save in accumulator
+        add_rows = length(prod_idx_vec)
+        nrow_start = prod_reco[:nrow][1] + 1
+        nrow_end = prod_reco[:nrow][1] = nrow_start + add_rows - 1
+
+        prod_reco[:cust_idx][nrow_start:nrow_end] = fill(this_cust_idx, add_rows)
+        prod_reco[:prod_idx][nrow_start:nrow_end] = prod_idx_vec
+        prod_reco[:raw_score][nrow_start:nrow_end] = prod_score_vec
+
+    end
 
     return nothing
-
+    
 end
 
 # predict
 """
-    function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
+    function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector{Customer})::Vector{CustomerProductReco} 
 
 Return vector of customer product recommendations.
 
 recommnder:     CollFilteringSVD type object
-customer:       Customers for whom recommendations to be predicted 
-fn_score:       Function to calculate recommendation score using vectors of similarity and rating
+predict_cust:   Customers for whom recommendations to be predicted 
+fn_score:               Function to calculate score from similairty and rating
 """
 
-function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
-
+function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
 
     # check error in call to predict
-    check_error_in_predict_call(recommender, customer)
+    check_error_in_predict_call(recommender, predict_cust)
 
-    # accumulate predictions
-    max_len = length(customer) * recommender.n_max_reco_per_cust
+    # pre-allocate collection to accumate recommendations
+    n_reco = min(length(recommender.prod_idx_map), recommender.n_max_reco_per_cust)    # recommendations per customer
+    max_len = length(predict_cust) * recommender.n_max_reco_per_cust                   # max length of array
+
     prod_reco = (
-        nrow = Vector{Int64}(undef, 1), 
+        nrow = Vector{Int64}(undef, 1),                                                # counter of recos stored
         cust_idx=Vector{Int64}(undef, max_len), 
         prod_idx=Vector{Int64}(undef, max_len), 
         raw_score=Vector{Float64}(undef, max_len)
     )
+    
+    prod_reco[:nrow][1] = 0     # initialize record count
 
-    # accumulate product recommendations for given customer
-    # initially store all candidates, later choose top ones
-    max_len = length(recommender.prod_idx_map)
-    cust_prod_reco = (
-        nrow = Vector{Int64}(undef, 1), 
-        prod_idx=Vector{Int64}(undef, max_len), 
-        raw_score=Vector{Float64}(undef, max_len)
-    )
+    # customer indices
+    cust_id = id.(predict_cust)
+    cust_idx = [recommender.cust_idx_map[id] for id in cust_id]
 
-    # accumulate products rated by customers similar to given customer
-    max_len = length(recommender.prod_idx_map) * recommender.n_max_similar_cust
-    similar_cust_rating = (
-        nrow = Vector{Int64}(undef, 1), 
-        cust_idx = Vector{Int64}(undef, max_len), 
-        similarity = Vector{Float64}(undef, max_len), 
-        prod_idx = Vector{Int64}(undef, max_len),
-        rating = Vector{Float64}(undef, max_len)
-    )
-
-    # customer indices from ids
-    predict_cust_id = id.(customer)   
-    predict_cust_idx = [recommender.cust_idx_map[id] for id in predict_cust_id]
-
-    # generate reco for each customer
-    prod_reco[:nrow][1] = 0                     # initialize once
-
-    for (i, curr_predict_cust_idx) in enumerate(predict_cust_idx)
-
-        # products rated by similar customers
-        similar_cust_rating[:nrow][1] = 0       # initialize counter for each customer
-        prod_from_similar_cust(recommender, curr_predict_cust_idx, similar_cust_rating)
-
-        # score and pick top candidates for each customer
-        cust_prod_reco[:nrow][1] = 0            # initialize counter for each customer
-        top_reco_for_customer(recommender, fn_score, similar_cust_rating, cust_prod_reco)
-
-        # add to overall accumulator
-        row_start = prod_reco[:nrow][1] + 1
-        rec_count = cust_prod_reco[:nrow][1]
-        row_end = row_start + rec_count - 1
-
-        prod_reco[:nrow][1] = row_end           # new record count
-
-        prod_reco[:cust_idx][row_start:row_end] = fill(curr_predict_cust_idx, rec_count)
-        prod_reco[:prod_idx][row_start:row_end] = @view cust_prod_reco[:prod_idx][1:rec_count]
-        prod_reco[:raw_score][row_start:row_end] = @view cust_prod_reco[:raw_score][1:rec_count]
-
-    end
+    # generate top product recommendations for customers
+    top_prod_for_cust(recommender, cust_idx, prod_reco, fn_score)
 
     # convert raw score to relative score
     nrow = prod_reco[:nrow][1]
@@ -212,16 +139,16 @@ function ProductReco.predict(recommender::CollFilteringSVD, customer::Vector{Cus
     if nrow < 2
         relative_score = fill(100, nrow)
     else
-        raw_score = @view prod_reco[:raw_score][1:nrow]
+        raw_score = prod_reco[:raw_score][1:nrow]
         relative_score = [ceil(Int, percentilerank(raw_score, s)) for s in raw_score]
     end
 
     # convert idx to id
     idx_cust_map = Dict(values(recommender.cust_idx_map) .=> keys(recommender.cust_idx_map))
-    reco_cust_id = [idx_cust_map[key] for key in @view prod_reco[:cust_idx][1:nrow]]
+    reco_cust_id = [idx_cust_map[key] for key in prod_reco[:cust_idx][1:nrow]]
     
     idx_prod_map = Dict(values(recommender.prod_idx_map) .=> keys(recommender.prod_idx_map))
-    reco_prod_id = [idx_prod_map[key] for key in @view prod_reco[:prod_idx][1:nrow]]
+    reco_prod_id = [idx_prod_map[key] for key in prod_reco[:prod_idx][1:nrow]]
 
     # return tuple
     return collect(zip(reco_cust_id, reco_prod_id, relative_score))
