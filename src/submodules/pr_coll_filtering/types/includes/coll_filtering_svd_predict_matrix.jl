@@ -30,18 +30,17 @@ function check_error_in_predict_call(recommender::CollFilteringSVD, predict_cust
 end
 
 """
-    function calc_reco_score(recommender::CollFilteringSVD, cust_idx::Vector{Int64})
+    function top_prod_for_cust(recommender::CollFilteringSVD, cust_idx::Vector{Int64}, fn_score::Function, prod_reco::NamedTuple)
 
 Return sparse raw score matrix for recommended new products for customers.
 
 recommnder:             CollFilteringSVD type object
 cust_idx:               Indices of customers to generate reco for
+prod_reco:              Pre-allocated tuple to accumulate recommendations
+fn_score:               Function to calculate score from similairty and rating
 """
 
-function calc_reco_score(recommender::CollFilteringSVD, cust_idx::Vector{Int64})
-
-    # sparse matrix to store recommendations
-    prod_cust_raw_score = spzeros(length(recommender.prod_idx_map), length(recommender.cust_idx_map))      # customer in column
+function top_prod_for_cust(recommender::CollFilteringSVD, cust_idx::Vector{Int64}, prod_reco::NamedTuple, fn_score::Function=dot)
 
     # empty sparse matrix with similar customers in rows, customers in columns
     similar_cust_cust_sim = spzeros(length(recommender.cust_idx_map), length(recommender.cust_idx_map))
@@ -53,15 +52,47 @@ function calc_reco_score(recommender::CollFilteringSVD, cust_idx::Vector{Int64})
         end
     end
 
-    # caculate raw reco scores for products for each customer
-    prod_cust_raw_score = recommender.prod_cust_rating * similar_cust_cust_sim
+    # number of max reco per customer
+    n_reco = min(length(recommender.prod_idx_map), recommender.n_max_reco_per_cust) 
 
-    # zero out score if customer has raing for product
-    for (i, j, _) in zip(findnz(recommender.prod_cust_rating)...)
-        prod_cust_raw_score[i, j] = 0
+    for (this_cust_idx, similarity_vec) in enumerate(eachcol(similar_cust_cust_sim))
+        
+        # scores for candidate products
+        prod_score_vec = [fn_score(rating_vec, similarity_vec) for rating_vec in eachrow(recommender.prod_cust_rating)]
+
+        # omit product if already rated by customer
+        for this_prod_idx in findnz(recommender.prod_cust_rating[:, this_cust_idx])[1]
+            prod_score_vec[this_prod_idx] = 0.0
+        end
+
+        # remove prod with score floating point 0.0
+        prod_idx_vec = [idx for idx in eachindex(prod_score_vec) if prod_score_vec[idx] .!== 0.0]
+        prod_score_vec = prod_score_vec[prod_score_vec .!== 0.0]
+
+        # if no product for customer then skip to next customer
+        (length(prod_idx_vec) == 0) && continue
+
+        # retain top products for customer
+        if length(prod_idx_vec) > n_reco
+
+            top_slice = sortperm(prod_score_vec, rev=true)[1:n_reco]
+            prod_idx_vec = prod_idx_vec[top_slice]
+            prod_score_vec = prod_score_vec[top_slice]
+            
+        end 
+
+        # save in accumulator
+        add_rows = length(prod_idx_vec)
+        nrow_start = prod_reco[:nrow][1] + 1
+        nrow_end = prod_reco[:nrow][1] = nrow_start + add_rows - 1
+
+        prod_reco[:cust_idx][nrow_start:nrow_end] = fill(this_cust_idx, add_rows)
+        prod_reco[:prod_idx][nrow_start:nrow_end] = prod_idx_vec
+        prod_reco[:raw_score][nrow_start:nrow_end] = prod_score_vec
+
     end
 
-    return prod_cust_raw_score
+    return nothing
     
 end
 
@@ -73,14 +104,15 @@ Return vector of customer product recommendations.
 
 recommnder:     CollFilteringSVD type object
 predict_cust:   Customers for whom recommendations to be predicted 
+fn_score:               Function to calculate score from similairty and rating
 """
 
-function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector{Customer})::Vector{CustomerProductReco} 
+function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector{Customer}, fn_score::Function=dot)::Vector{CustomerProductReco} 
 
     # check error in call to predict
     check_error_in_predict_call(recommender, predict_cust)
 
-    # pre-allocate array to accumate predictions
+    # pre-allocate collection to accumate recommendations
     n_reco = min(length(recommender.prod_idx_map), recommender.n_max_reco_per_cust)    # recommendations per customer
     max_len = length(predict_cust) * recommender.n_max_reco_per_cust                   # max length of array
 
@@ -97,41 +129,8 @@ function ProductReco.predict(recommender::CollFilteringSVD, predict_cust::Vector
     cust_id = id.(predict_cust)
     cust_idx = [recommender.cust_idx_map[id] for id in cust_id]
 
-    # generate raw scores
-    prod_cust_raw_score = calc_reco_score(recommender, cust_idx)
-
-    # retain top scored products
-    for (this_cust_idx, prod_score_col) in enumerate(eachcol(prod_cust_raw_score))
-
-        # extract non-zero prod scores from sparse vector
-        nz_prod_score_col = findnz(prod_score_col)
-        prod_idx = nz_prod_score_col[1]
-        raw_score = nz_prod_score_col[2]
-        
-        # remove prod with score floating point 0.0
-        nz_slice = raw_score .!== 0.0               # on rhs integer 0 does not create right slice
-        prod_idx = prod_idx[nz_slice]
-        raw_score = raw_score[nz_slice]
-
-        # if number of products more than n_reco then retain top n_reco
-        if length(prod_idx) > n_reco
-
-            top_slice = sortperm(raw_score, rev=true)[1:n_reco]
-            prod_idx = prod_idx[top_slice]
-            raw_score = raw_score[top_slice]
-            
-        end 
-
-        # save in accumulator
-        nrow_start = prod_reco[:nrow][1] + 1
-        add_recs = length(prod_idx)
-        nrow = prod_reco[:nrow][1] = nrow_start + add_recs - 1
-
-        prod_reco[:cust_idx][nrow_start:nrow] = fill(this_cust_idx, add_recs)
-        prod_reco[:prod_idx][nrow_start:nrow] = prod_idx
-        prod_reco[:raw_score][nrow_start:nrow] = raw_score
-
-    end  # end processing all cust
+    # generate top product recommendations for customers
+    top_prod_for_cust(recommender, cust_idx, prod_reco, fn_score)
 
     # convert raw score to relative score
     nrow = prod_reco[:nrow][1]
