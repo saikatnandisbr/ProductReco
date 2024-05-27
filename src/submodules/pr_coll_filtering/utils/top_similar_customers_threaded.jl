@@ -91,11 +91,11 @@ function top_similar_customers_threaded(fn_sim::Function, top_n::Int64, prod_cus
                 resize!(similar_cust_idx[thread_number], curr_loc-1)
                 resize!(similarity[thread_number], curr_loc-1)
             
-            end
+            end  # end @spawn
 
-        end
+        end  # end thread loop
 
-    end
+    end  # end @sync
 
     # concatenate outputs from separate threads before returning
     return vcat(cust_idx...), vcat(similar_cust_idx...), vcat(similarity...)
