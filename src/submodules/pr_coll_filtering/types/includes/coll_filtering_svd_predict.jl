@@ -32,7 +32,7 @@ end
 """
     function top_prod_for_cust(recommender::CollFilteringSVD, cust_idx::Vector{Int64}, fn_score::Function, prod_reco::NamedTuple)
 
-Return sparse raw score matrix for recommended new products for customers.
+Identify top recommendations for customers, populate prod_reco with these recommendations.
 
 recommnder:             CollFilteringSVD type object
 cust_idx:               Indices of customers to generate reco for
